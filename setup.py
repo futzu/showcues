@@ -22,9 +22,9 @@ setuptools.setup(
         'm3ufu >= 0.0.69',
         'threefive >= 2.3.97',
     ],
-
+    py_modules=["showcues"],
     scripts=['bin/showcues'],
-    packages=setuptools.find_packages(),
+    platforms='all',
     classifiers=[
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
