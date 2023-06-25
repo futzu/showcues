@@ -1,5 +1,5 @@
 # showcues
-Display HLS CUE-OUT and CUE-IN tags  with wall clock times.
+Display HLS CUE-OUT and CUE-IN tags with wall clock times.
 
  Latest Version is `1.0.5`
 
@@ -20,6 +20,11 @@ pypy3 -mpip install  --upgrade showcues
 
 ## Run 
 * showcues takes a master m3u8 OR variant m3u8 _(new with v.1.0.5)_ as input.
+* showcues displays where the SCTE-35 cues are based on the SCTE-35 data.
+* showcues follows the rules we will be applying to SCTE-35 in HLS. 
+   * Cues that are completely wrong are dropped.
+   * Missing CUE-INs from break auto-returns are automatically added.
+   
 ```rebol
 
 showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index.m3u8
@@ -52,5 +57,3 @@ Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/i
 2023-06-19T03:03:47 AUTO #EXT-X-CUE-IN  Diff: 5.539 
 Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/index_375/00094/index_375_00039.ts
 ```
-## Screen Shot
-![image](https://github.com/futzu/showcues/assets/52701496/ec8a3748-bba6-4b4a-b2e0-08edae1534eb)
