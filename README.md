@@ -10,6 +10,13 @@ python3 -mpip install showcues
 # and / or 
 pypy3 -mpip install showcues
 ```
+## Upgrade
+* Use pip to upgrade
+```rebol
+python3 -mpip install --upgrade showcues 
+# and / or 
+pypy3 -mpip install  --upgrade showcues
+```
 
 ## Run 
 * showcues takes a master m3u8 OR variant m3u8 _(new with v.1.0.5)_ as input.
