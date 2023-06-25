@@ -1,6 +1,8 @@
 # showcues
 Display HLS CUE-OUT and CUE-IN tags  with wall clock times.
 
+ Latest Version is `1.0.5`
+
 ## Install 
 * Use pip to install
 ```rebol
@@ -10,24 +12,23 @@ pypy3 -mpip install showcues
 ```
 
 ## Run 
-* showcues takes a master m3u8 file as input, it parses the first playable variant it finds.
+* showcues takes a master m3u8 OR variant m3u8 _(new with v.1.0.5)_ as input.
 ```rebol
 
 showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index.m3u8
+# OR
+showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_1.m3u8
+
 ```
 
-* showcues displays the variant it picked to parse.
-```rebol
-https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_2400.m3u8
-```
 * A `CUE-OUT` is shown with:
     * duration
     * wall clock time
     * The segment URI 
 ```smalltalk
-set duration to  360.16
-2023-06-19T02:57:40 OUT #EXT-X-CUE-OUT:360.160
-Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/index_375/00093/index_375_01977.ts
+set duration to  150.0
+2023-06-25T08:44:39 OUT #EXT-X-CUE-OUT:150.000 
+Media: https://3ae97e9482b0d011.mediapackage.us-west-2.amazonaws.com/out/v1/42be1df466a74177885d7ad299c0bb41/index_1_790188.ts?m=1683044685
 ```
 
 * A `CUE-IN` is shown with
