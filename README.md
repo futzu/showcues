@@ -46,4 +46,4 @@ Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/i
 Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/index_375/00094/index_375_00039.ts
 ```
 ## Screen Shot
-![image](https://github.com/futzu/showcues/assets/52701496/01a59b89-9baa-40a2-86ea-31d39924912f)
+![image](https://github.com/futzu/showcues/assets/52701496/ec8a3748-bba6-4b4a-b2e0-08edae1534eb)
