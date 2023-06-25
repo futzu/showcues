@@ -5,6 +5,7 @@ import sys
 import time
 import threefive
 from threefive import Cue
+from iframes import IFramer
 from m3ufu import M3uFu, TagParser, HEADER_TAGS
 from new_reader import reader
 
@@ -98,6 +99,7 @@ class CuePuller:
     def __init__(self):
         self.cues = []
         self.media = []
+        self.media_count = 101
         self.sidecar_file = "cp_sidecar.txt"
         self.base_uri = None
         self.iv = None
@@ -116,6 +118,8 @@ class CuePuller:
         self.cue_state = None
         self.last_cue = None
         self.headers = []
+        self.pts = None
+        self.hls_pts = "HLS"
 
     def chk_aes(self, line):
         """
@@ -178,8 +182,8 @@ class CuePuller:
         """
         cue = cue.replace("\r", "").replace("\n", "")
         if "CONT" not in line:
-            cue_stuff = f"{REV}{self.cue_state} {NORM}  {cue} "
-            media_stuff = f"\nMedia: {self.media[-1]}\n"
+            cue_stuff = f"{REV}{self.cue_state}{NORM} {cue} "
+            media_stuff = f"\n{REV}Media:{NORM} {self.media[-1]}\n"
             if cue == "#EXT-X-CUE-IN":
                 self.cue_state = "IN"
                 diff_stuff = f" {REV}Diff:{NORM} {round(self.break_timer - self.break_duration,3)}"
@@ -282,33 +286,59 @@ class CuePuller:
                 if self.break_timer >= self.break_duration:
                     self.cue_state = "IN"
                     print(
-                        f"{iso8601()} {REV}AUTO CUE-IN{NORM} Diff: {REV}{round(self.break_timer - self.break_duration,3)}{NORM} \nMedia: {self.media[-1]}\n"
+                        f"{iso8601()} {REV}AUTO{NORM} #EXT-X-CUE-IN{REV}Diff:{NORM}{round(self.break_timer - self.break_duration,3)} \n{REV}Media:{NORM} {self.media[-1]}\n"
                     )
                     self.reset_break()
                     return "\n#AUTO\n#EXT-X-CUE-IN\n" + line
         return line
 
     def reset_break(self):
+        """
+        reset_break resets
+        break_duration, break_timer,
+        and cue_state after a CUE-IN
+        """
         if self.cue_state == "IN":
             self.break_duration = None
             self.break_timer = None
             self.cue_state = None
 
     def extinf(self, line):
+        """
+        extinf parses lines that start with #EXTINF
+        for the segment duration.
+        """
         tags = TagParser([line]).tags
         if "#EXTINF" in tags:
             if isinstance(tags["#EXTINF"], str):
                 tags["#EXTINF"] = tags["#EXTINF"].rsplit(",", 1)[0]
             seg_time = round(float(tags["#EXTINF"]), 6)
             line = self.auto_cuein(line)
+            if self.pts is not None:
+                self.pts += seg_time
             if self.break_timer is not None:
                 self.break_timer += seg_time
         return line
 
     def new_media(self, media):
+        """
+        new_media check to see
+        if the media is new in a
+        live sliding window
+        """
         if media not in self.media:
             self.media.append(media)
-            self.media = self.media[-self.MEDIA_COUNT :]
+            if self.pts is None:
+                media = media.replace("\n", "")
+                if ".ts" in media:
+                    Iframer = IFramer(shush=True)
+                    iframes = Iframer.do(media)
+                    self.pts = iframes[0]
+                    self.hls_pts = "PTS"
+                else:
+                    self.pts = 0
+            # print(f"Starting {self.hls_pts} Time:{ self.pts}\n")
+            self.media = self.media[-self.window_size * 2 :]
             return True
         return False
 
@@ -388,13 +418,16 @@ def cli():
     fu.m3u8 = sys.argv[1]
     fu.decode()
     m3u8 = None
-    for segment in fu.segments:
-        if "#EXT-X-STREAM-INF" in segment.tags:
-            m3u8 = segment.media
-            cp = CuePuller()
-            print(m3u8)
-            cp.pull(m3u8)
-    print("variant m3u8 not found")
+    playlists = [
+        segment for segment in fu.segments if "#EXT-X-STREAM-INF" in segment.tags
+    ]
+    if playlists:
+        m3u8 = playlists[0].media
+    else:
+        m3u8 = sys.argv[1]
+    cp = CuePuller()
+    print(f"m3u8: {m3u8}\n")
+    cp.pull(m3u8)
 
 
 if __name__ == "__main__":
