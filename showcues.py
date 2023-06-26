@@ -414,17 +414,22 @@ class CuePuller:
 
 
 def cli():
-    fu = M3uFu()
-    fu.m3u8 = sys.argv[1]
-    fu.decode()
-    m3u8 = None
-    playlists = [
-        segment for segment in fu.segments if "#EXT-X-STREAM-INF" in segment.tags
-    ]
-    if playlists:
-        m3u8 = playlists[0].media
-    else:
-        m3u8 = sys.argv[1]
+    with reader(sys.argv[1]) as arg:
+        playlists=None
+        variants = [line for line in arg if b"#EXT-X-STREAM-INF" in line]
+        if variants:
+            fu = M3uFu()
+            reload =False
+            fu.m3u8 = sys.argv[1]
+            fu.decode()
+            m3u8 = None
+            playlists = [
+                segment for segment in fu.segments if "#EXT-X-STREAM-INF" in segment.tags
+            ]
+        if playlists:
+                m3u8 = playlists[0].media
+        else:
+            m3u8 = sys.argv[1]
     cp = CuePuller()
     print(f"m3u8: {m3u8}\n")
     cp.pull(m3u8)
