@@ -1,7 +1,7 @@
 # showcues
 Display HLS CUE-OUT and CUE-IN tags with wall clock times.
 
- Latest Version is `1.0.5`
+ Latest Version is `1.0.7`
 
 ## Install 
 * Use pip to install
@@ -38,9 +38,10 @@ showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_1.m3u8
     * wall clock time
     * The segment URI 
 ```smalltalk
-set duration to  150.0
-2023-06-25T08:44:39 OUT #EXT-X-CUE-OUT:150.000 
-Media: https://3ae97e9482b0d011.mediapackage.us-west-2.amazonaws.com/out/v1/42be1df466a74177885d7ad299c0bb41/index_1_790188.ts?m=1683044685
+
+2023-06-26T08:30:57 OUT #EXT-X-CUE-OUT:164.967  Duration: 164.967 
+Media: https://c75a7e79204e539d.mediapackage.us-east-1.amazonaws.com/out/v1/9cffbbcc0e8a4fb0b83036cc3b1c5c1f/index_1_773858.aac?m=1683126814
+
 ```
 
 * A `CUE-IN` is shown with
