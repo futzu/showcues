@@ -352,7 +352,7 @@ class CuePuller:
                 [line for line in lines if line.startswith("#EXTINF:")]
             )
             self.sliding_window.size = self.window_size
-            print(f"window_size:{self.window_size}")
+            print(f"{REV}Window_size:{NORM} {self.window_size}\n")
 
     def update_cue_state(self):
         if self.cue_state == "OUT":
@@ -381,7 +381,8 @@ class CuePuller:
         return False
 
     def pull(self, manifest):
-        print("started")
+        print(f"{REV}Started{NORM}\n")
+        print(f"\n{REV}variant m3u8:{NORM} {manifest}\n")
         self.base_uri = manifest.rsplit("/", 1)[0]
         self.sliding_window = SlidingWindow()
         while self.reload:
@@ -414,25 +415,26 @@ class CuePuller:
 
 
 def cli():
+    playlists=None
+    m3u8 = None
     with reader(sys.argv[1]) as arg:
-        playlists=None
         variants = [line for line in arg if b"#EXT-X-STREAM-INF" in line]
         if variants:
             fu = M3uFu()
             reload =False
             fu.m3u8 = sys.argv[1]
             fu.decode()
-            m3u8 = None
             playlists = [
                 segment for segment in fu.segments if "#EXT-X-STREAM-INF" in segment.tags
             ]
-        if playlists:
-                m3u8 = playlists[0].media
-        else:
-            m3u8 = sys.argv[1]
+    if playlists:
+        m3u8 = playlists[0].media
+    else:
+        m3u8 = sys.argv[1]
     cp = CuePuller()
-    print(f"m3u8: {m3u8}\n")
     cp.pull(m3u8)
+
+
 
 
 if __name__ == "__main__":
