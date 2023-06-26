@@ -196,7 +196,7 @@ class CuePuller:
                     self.break_duration = atoif(line.split(":")[1])
                 finally:
                     self.cue_state = "OUT"
-                print(f"{iso8601()} {cue_stuff}{media_stuff}")
+                print(f"{iso8601()} {cue_stuff} {REV}Duration:{NORM} {self.break_duration} {media_stuff}")
                 return line
         cue2 = self.six2five(cue)
         cue2data = Cue(cue2)
@@ -243,7 +243,7 @@ class CuePuller:
                 self.break_timer = 0.0
             if ":" in line:
                 self.break_duration = atoif(line.split(":")[1])
-                print("set duration to ", self.break_duration)
+               # print("Duration:", self.break_duration)
             return self.add_cue(line, line)
         return "## " + line
 
