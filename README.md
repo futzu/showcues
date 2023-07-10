@@ -1,7 +1,7 @@
 # showcues
 Display HLS CUE-OUT and CUE-IN tags with wall clock times.
 
- Latest Version is `1.0.7`
+ Latest Version is `1.0.9`
 
 ## Install 
 * Use pip to install
