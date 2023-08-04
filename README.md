@@ -1,7 +1,7 @@
 # showcues
 Display HLS CUE-OUT and CUE-IN tags with wall clock times.
 
- Latest Version is `1.0.9`
+ Latest Version is `1.0.11`
 
 ## Install 
 * Use pip to install
@@ -38,10 +38,9 @@ showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_1.m3u8
     * wall clock time
     * The segment URI 
 ```smalltalk
-
-2023-06-26T08:30:57 OUT #EXT-X-CUE-OUT:164.967  Duration: 164.967 
-Media: https://c75a7e79204e539d.mediapackage.us-east-1.amazonaws.com/out/v1/9cffbbcc0e8a4fb0b83036cc3b1c5c1f/index_1_773858.aac?m=1683126814
-
+2023-08-03T23:45:15.16Z  OUT 
+			 Duration: 150.0
+			 Media: pri-aac_adts96-1691106276-5479-7257.aac
 ```
 
 * A `CUE-IN` is shown with
@@ -49,14 +48,16 @@ Media: https://c75a7e79204e539d.mediapackage.us-east-1.amazonaws.com/out/v1/9cff
     * The diff of when the CUE-IN should be and when it actually occurs.
     * The segment URI 
 ```smalltalk
-2023-06-22T02:17:26 IN #EXT-X-CUE-IN   Diff: 0.0
-Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/index_2400/00115/index_2400_01720.ts
+2023-08-03T23:48:13.06Z  IN 
+			 Diff: 0.017
+			 Media: pri-aac_adts96-1691106456-5479-7290.aac
+
 
 ```
   * An `AUTO CUE-IN` such as with a Break Auto Return, includes the word `AUTO`
 ```smalltalk
 2023-06-19T03:03:47 AUTO #EXT-X-CUE-IN  Diff: 5.539 
-Media: https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/20230606T041328/index_375/00094/index_375_00039.ts
+Media: index_375_00039.ts
 ```
 
 * A Sidecar file, `sidecar.txt` is generated containing a list of ( pts,cue ) pairs.
