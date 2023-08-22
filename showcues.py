@@ -12,6 +12,7 @@ from new_reader import reader
 REV = "\033[7m"
 NORM = "\033[27m"
 SUB = "\n\t\t\t "
+ROLLOVER = 95443.717678
 
 
 def atoif(value):
@@ -21,13 +22,16 @@ def atoif(value):
     if "." in value:
         try:
             value = float(value)
-        finally:
             return value
+        except:
+            pass
     else:
         try:
             value = int(value)
-        finally:
             return value
+        except:
+            pass
+    return None
 
 
 def iso8601():
@@ -117,11 +121,63 @@ class CuePuller:
         self.cue_state = None
         self.last_cue = None
         self.headers = []
-        self.pts = None
+        self.pts = 0
         self.cont_resume = False
         self.hls_pts = "HLS"
         with open(self.sidecar, "w+") as sidecar:  # touch sidecar
             pass
+
+    @staticmethod
+    def is_header(header):
+        """
+        is_header tests aac and ac3 files for ID3 headers.
+        """
+        if header[:3] == b"ID3":
+            return True
+        return False
+
+    @staticmethod
+    def id3_len(header):
+        """
+        id3_len parses the length value from ID3 headers
+        """
+        id3len = int.from_bytes(header[6:], byteorder="big")
+        return id3len
+
+    @staticmethod
+    def syncsafe3(somebytes):
+        """
+        syncsafe3 parses sync safe integers from ID3 tags.
+        """
+        lsb = len(somebytes) - 1
+        syncd = 0
+        for idx, b in enumerate(somebytes):
+            syncd += (b + (b & 128)) << ((lsb - idx) << 3)
+        return round(syncd / 90000.0, 6)
+
+    @staticmethod
+    def clear():
+        """
+        clear previous line.
+        """
+        print(" " * 80, end="\r")
+
+    def aac_pts(self, media):
+        """
+        aac_pts parses the ID3 header tags in aac and ac3 audio files
+        """
+        applehead = b"com.apple.streaming.transportStreamTimestamp"
+        aac = reader(media)
+        header = aac.read(10)
+        if self.is_header(header):
+            id3len = self.id3_len(header)
+            data = aac.read(id3len)
+            if applehead in data:
+                try:
+                    pts = float(data.split(applehead)[1].split(b"\x00", 2)[1])
+                    return round(pts, 6)
+                except:
+                    return self.syncsafe3(data.split(applehead)[1])
 
     def chk_aes(self, line):
         """
@@ -179,6 +235,9 @@ class CuePuller:
         return cue.encode()
 
     def media_stuff(self):
+        """
+        media_stuff trims segment URI to just the file name.
+        """
         media = self.media[-1]
         short_media = media.rsplit("/", 1)[1].split("?", 1)[0]
         return f"\t\t\t Media: {short_media.strip()}"
@@ -203,8 +262,9 @@ class CuePuller:
         if "CONT" not in line:
             if cue.startswith("#EXT-X-CUE-IN"):
                 self.cue_state = "IN"
+                self.clear()
                 print(
-                    f"{iso8601()} {self.cue_stuff()}{SUB}{self.diff_stuff()}{self.media_stuff()}"
+                    f"{iso8601()} {self.cue_stuff()}{SUB}pts: {self.pts}{SUB}{self.diff_stuff()}{self.media_stuff()}\n"
                 )
                 self.reset_break()
                 return line
@@ -216,21 +276,22 @@ class CuePuller:
                     pass
                 finally:
                     self.cue_state = "OUT"
+                self.clear()
                 print(
-                    f"{iso8601()} {self.cue_stuff()}{SUB}{self.dur_stuff()}{self.media_stuff()}"
+                    f"{iso8601()} {self.cue_stuff()}{SUB}pts: {self.pts}{SUB}{self.dur_stuff()}{self.media_stuff()}\n"
                 )
                 return line
         cue2 = self.six2five(cue)
         cue2data = Cue(cue2)
         cue2data.decode()
         line = line.replace(cue, cue2)
-        # print(f"{iso8601()} converted {cue} \n-> {cue2}\n")
         return line
 
     def block(self, line):
         """
         print SCTE-35 tags blocked by the ruleset.
         """
+        self.clear()
         print(f"{iso8601()}{REV} Skipping {NORM}:{SUB}{line}{self.media_stuff()}")
 
     def chk_x_cue_out_cont(self, tags, line):
@@ -239,7 +300,7 @@ class CuePuller:
         #EXT-X-CUE-OUT-CONT tags
         """
         cont_tags = tags["#EXT-X-CUE-OUT-CONT"]
-        if self.cue_state in ["OUT", "CONT"] or self.cont_resume == True:
+        if self.cue_state in ["OUT", "CONT"] or self.cont_resume:
             if self.cont_resume:
                 print(f"{iso8601()}: {REV} Resuming {NORM} {line}")
             self.cont_resume = False
@@ -293,7 +354,7 @@ class CuePuller:
         print("\t\t\t Tags:")
         for k, v in tags["#EXT-X-DATERANGE"].items():
             print(f"\t\t\t\t {k}: {v.strip()}")
-        # print(f"\t\t\t Tags:{tags['#EXT-X-DATERANGE']}\n")
+        print()
         for scte35_tag in ["SCTE35-OUT", "SCTE35-IN"]:
             if scte35_tag in tags["#EXT-X-DATERANGE"]:
                 return self.add_cue(tags["#EXT-X-DATERANGE"][scte35_tag], line)
@@ -310,7 +371,6 @@ class CuePuller:
             "#EXT-X-DATERANGE": self.chk_x_daterange,
             "#EXT-X-SCTE35": self.chk_x_scte35,
             "#EXT-X-CUE-OUT-CONT": self.chk_x_cue_out_cont,
-            "#EXT-X-DATERANGE": self.chk_x_daterange,
             "#EXT-OATCLS-SCTE35": self.chk_x_oatcls,
             "#EXT-X-CUE-IN": self.chk_x_cue_in,
             "#EXT-X-CUE-OUT": self.chk_x_cue_out,
@@ -364,6 +424,33 @@ class CuePuller:
                 self.break_timer += seg_time
         return line
 
+    def print_time(self):
+        """
+        print_time prints wall clock and pts.
+        """
+        if self.pts is not None:
+            print(
+                f" {iso8601()} {self.hls_pts}:{REV}{round(self.pts,6)}{NORM}", end="\r"
+            )
+
+    def chk_ts(self, media):
+        if ".ts" in media:
+            ifr = IFramer(shush=True)
+            iframes = ifr.do(media)
+            if iframes:
+                self.pts = round(iframes[0], 6) % ROLLOVER
+                self.hls_pts = "PTS"
+                self.print_time()
+
+    def chk_aac(self, media):
+        if ".aac" in media or ".ac3" in media:
+            try:
+                self.pts = self.aac_pts(media) % ROLLOVER
+                self.hls_pts = "PTS"
+                self.print_time()
+            except:
+                pass
+
     def new_media(self, media):
         """
         new_media check to see
@@ -372,16 +459,9 @@ class CuePuller:
         """
         if media not in self.media:
             self.media.append(media)
-            if self.pts is None:
-                media = media.replace("\n", "")
-                if ".ts" in media:
-                    Iframer = IFramer(shush=True)
-                    iframes = Iframer.do(media)
-                    self.pts = iframes[0]
-                    self.hls_pts = "PTS"
-                else:
-                    self.pts = 0
-            # print(f"Starting {self.hls_pts} Time:{ self.pts}\n")
+            media = media.replace("\n", "")
+            self.chk_ts(media)
+            self.chk_aac(media)
             self.media = self.media[-self.window_size * 2 :]
             return True
         return False
@@ -396,7 +476,7 @@ class CuePuller:
         if "TARGETDURATION" in line:
             if self.sleep_duration == 0:
                 self.sleep_duration = round(atoif(line.split(":")[1]), 3)
-                print(f"\t\t\t Target Duration: {self.sleep_duration}")
+                print(f"\t\t\t Target Duration: {self.sleep_duration}\n")
 
     def mk_window_size(self, lines):
         """
@@ -516,7 +596,7 @@ def cli():
         variants = [line for line in arg if b"#EXT-X-STREAM-INF" in line]
         if variants:
             fu = M3uFu()
-            reload = False
+            # reload = False
             fu.m3u8 = sys.argv[1]
             fu.decode()
             playlists = [
