@@ -8,7 +8,6 @@ from threefive import Cue,Segment
 from m3ufu import M3uFu, TagParser, HEADER_TAGS
 from new_reader import reader
 
-
 REV = "\033[7m"
 NORM = "\033[27m"
 SUB = "\n\t\t\t "
@@ -268,7 +267,7 @@ class CuePuller:
                 self.cue_state = "IN"
                 self.clear()
                 print(
-                    f"{iso8601()} {self.cue_stuff()}{SUB}pts: {self.pts}{SUB}{self.diff_stuff()}{self.media_stuff()}\n"
+                    f"{iso8601()} {self.cue_stuff()}{SUB}{self.hls_pts}: {self.pts}{SUB}{self.diff_stuff()}{self.media_stuff()}\n"
                 )
                 self.reset_break()
                 return line
@@ -282,7 +281,7 @@ class CuePuller:
                     self.cue_state = "OUT"
                 self.clear()
                 print(
-                    f"{iso8601()} {self.cue_stuff()}{SUB}pts: {self.pts}{SUB}{self.dur_stuff()}{self.media_stuff()}\n"
+                    f"{iso8601()} {self.cue_stuff()}{SUB}{self.hls_pts}: {self.pts}{SUB}{self.dur_stuff()}{self.media_stuff()}\n"
                 )
                 return line
         cue2 = self.six2five(cue)
@@ -434,42 +433,47 @@ class CuePuller:
         """
         if self.pts is not None:
             print(
-                f" {iso8601()} {self.hls_pts}:{REV}{round(self.pts,6)}{NORM}", end="\r"
+                f" {iso8601()}{self.hls_pts}:{REV}{round(self.pts,6)}{NORM}", end="\r"
             )
 
-    def chk_ts(self, media):
-        if ".ts" in media:
-            seg = Segment(media)
+    def chk_ts(self, this):
+        if ".ts" in this:
+            seg = Segment(this,key_uri=self.key_uri , iv=self.iv)
             seg.shushed()
             seg.decode()
             if seg.pts_start:
                 self.pts = seg.pts_start
                 self.hls_pts = "PTS"
                 for cue in seg.cues:
-                    self.to_sidecar(self.pts,cue)
-                    print(f'{iso8601()} {cue.encode()}')
+                    cue.decode()
+                    pts = self.pts
+                    if cue.command.pts_time:
+                        pts = (cue.command.pts_time + cue.info_section.pts_adjustment) % ROLLOVER
+                    self.to_sidecar(pts,cue)
+                    self.clear()
+                    print(f'{iso8601()} {REV}SCTE-35{NORM}{SUB}{self.hls_pts}: {round(pts,6)}{SUB}Cue:{cue.encode()}\n')
                 self.print_time()
                 
-    def chk_aac(self, media):
-        if ".aac" in media or ".ac3" in media:
+    def chk_aac(self, this):
+        if ".aac" in this or ".ac3" in this:
             try:
-                self.pts = self.aac_pts(media) % ROLLOVER
+                self.pts = self.aac_pts(this) % ROLLOVER
                 self.hls_pts = "PTS"
                 self.print_time()
             except:
                 pass
 
-    def new_media(self, media):
+    def new_media(self, this):
         """
         new_media check to see
         if the media is new in a
         live sliding window
         """
-        if media not in self.media:
-            self.media.append(media)
-            media = media.replace("\n", "")
-            self.chk_ts(media)
-            self.chk_aac(media)
+        if this not in self.media:
+            self.media.append(this)
+            this = this.replace("\n", "")
+            self.chk_ts(this)
+            self.chk_aac(this)
             self.media = self.media[-self.window_size * 2 :]
             return True
         return False
@@ -604,7 +608,6 @@ def cli():
         variants = [line for line in arg if b"#EXT-X-STREAM-INF" in line]
         if variants:
             fu = M3uFu()
-            # reload = False
             fu.m3u8 = sys.argv[1]
             fu.decode()
             playlists = [
@@ -618,6 +621,7 @@ def cli():
         m3u8 = sys.argv[1]
     cp = CuePuller()
     cp.pull(m3u8)
+    print()
 
 
 if __name__ == "__main__":
