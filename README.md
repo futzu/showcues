@@ -34,30 +34,53 @@ showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_1.m3u8
 ```
 
 * A `CUE-OUT` is shown with:
-    * duration
-    * wall clock time
-    * The segment URI 
+    * Wall Clock Time
+    * PTS 
+    * Duration
+    * The Segment URI
+  
 ```smalltalk
-2023-08-03T23:45:15.16Z  OUT 
-			 Duration: 150.0
-			 Media: pri-aac_adts96-1691106276-5479-7257.aac
+2023-08-23T08:58:20.92Z  OUT                                                    
+			 PTS: 38113.435878
+			 Duration: 90.023267
+			 Media: seg9.ts
+
 ```
 
 * A `CUE-IN` is shown with
-    * wall clock time
-    * The diff of when the CUE-IN should be and when it actually occurs.
-    * The segment URI 
+    * Wall Clock Time
+    * PTS
+    * The Diff of when the CUE-IN should be and when it actually occurs.
+    * The Segment URI 
 ```smalltalk
-2023-08-03T23:48:13.06Z  IN 
-			 Diff: 0.017
-			 Media: pri-aac_adts96-1691106456-5479-7290.aac
-
+2023-08-23T08:58:21.02Z  IN                                                     
+			 PTS: 38203.175533
+			 Diff: -0.033
+			 Media: seg43.ts
 
 ```
   * An `AUTO CUE-IN` such as with a Break Auto Return, includes the word `AUTO`
 ```smalltalk
 2023-06-19T03:03:47 AUTO #EXT-X-CUE-IN  Diff: 5.539 
 Media: index_375_00039.ts
+```
+* A `SCTE-35` indicates SCTE-35 data in the segments. A `SCTE-35` is shown with:
+  * Wall Clock Time
+  * PTS
+  * The Base64 encoded SCTE-35 Cue 
+  
+```smalltalk
+2023-08-23T08:58:20.91Z  SCTE-35                                                
+			 PTS: 38113.135578
+			 Cue:/DAxAAAAAAAAAP/wFAUAAABdf+/+zHRtOn4Ae6DOAAAAAAAMAQpDVUVJsZ8xMjEqLYemJQ==
+
+```
+
+* Live clock at the bottom of the page.
+  * Wall Clock Time
+  * PTS
+```smalltalk
+ 2023-08-23T08:58:21.07Z PTS:38247.104111
 ```
 
 * A Sidecar file, `sidecar.txt` is generated containing a list of ( pts,cue ) pairs.
