@@ -4,10 +4,10 @@ import datetime
 import sys
 import time
 import threefive
-from threefive import Cue
-from iframes import IFramer
+from threefive import Cue,Segment
 from m3ufu import M3uFu, TagParser, HEADER_TAGS
 from new_reader import reader
+
 
 REV = "\033[7m"
 NORM = "\033[27m"
@@ -193,6 +193,10 @@ class CuePuller:
                 if "IV" in tags["#EXT-X-KEY"]:
                     self.iv = tags["#EXT-X-KEY"]["IV"]
 
+    def to_sidecar(self,pts,cue):
+        with open(self.sidecar, "a") as sidecar:
+            sidecar.write(f"{pts},{cue.encode()}")
+
     def six2five(self, a_cue):
         """
         six2five converts Time Signals (type 6)
@@ -230,8 +234,8 @@ class CuePuller:
                     self.break_timer = 0.0
             if cue.command.break_duration:
                 self.break_duration = cue.command.break_duration
-        with open(self.sidecar, "a") as sidecar:
-            sidecar.write(f"{cue.command.pts_time},{cue.encode()}")
+
+
         return cue.encode()
 
     def media_stuff(self):
@@ -435,13 +439,17 @@ class CuePuller:
 
     def chk_ts(self, media):
         if ".ts" in media:
-            ifr = IFramer(shush=True)
-            iframes = ifr.do(media)
-            if iframes:
-                self.pts = round(iframes[0], 6) % ROLLOVER
+            seg = Segment(media)
+            seg.shushed()
+            seg.decode()
+            if seg.pts_start:
+                self.pts = seg.pts_start
                 self.hls_pts = "PTS"
+                for cue in seg.cues:
+                    self.to_sidecar(self.pts,cue)
+                    print(f'{iso8601()} {cue.encode()}')
                 self.print_time()
-
+                
     def chk_aac(self, media):
         if ".aac" in media or ".ac3" in media:
             try:
