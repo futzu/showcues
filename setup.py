@@ -20,7 +20,7 @@ setuptools.setup(
     install_requires=[
         'new_reader >= 0.1.7',
         'm3ufu >= 0.0.69',
-        'threefive >= 2.3.99',
+        'threefive >= 2.4.1',
     ],
     py_modules=["showcues"],
     scripts=['bin/showcues'],
