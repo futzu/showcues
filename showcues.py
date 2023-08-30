@@ -3,6 +3,7 @@
 import datetime
 import sys
 import time
+from collections import deque
 from threefive import Segment
 from m3ufu import M3uFu, TagParser, HEADER_TAGS
 from new_reader import reader
@@ -68,7 +69,7 @@ class SlidingWindow:
 
     def __init__(self, size=101):
         self.size = size
-        self.panes = []
+        self.panes = deque()
         self.delete = False
 
     def pop_pane(self):
@@ -76,8 +77,7 @@ class SlidingWindow:
         pop_pane removes the first item in self.panes
         """
         if len(self.panes) > self.size:
-            # popped = self.panes[0].media
-            self.panes = self.panes[1:]
+            self.panes.popleft()
 
     def push_pane(self, a_pane):
         """
@@ -153,7 +153,7 @@ class AacParser:
 
 class CuePuller:
     def __init__(self):
-        self.media = []
+        self.media = deque()
         self.sidecar = "sidecar.txt"
         self.base_uri = None
         self.iv = None
@@ -168,7 +168,7 @@ class CuePuller:
         self.sliding_window = None
         self.cue_state = None
         self.pts = 0
-        self.cont_resume = False
+        self.first_segment = True
         self.hls_pts = "HLS"
         with open(self.sidecar, "w+") as sidecar:  # touch sidecar
             pass
@@ -250,7 +250,7 @@ class CuePuller:
             if cue.startswith("#EXT-X-CUE-IN"):
                 self.cue_state = "IN"
                 self.clear()
-                print(f"{head}{self.diff_stuff()}")
+                print(f"{head}{self.diff_stuff()}\n")
                 self.reset_break()
                 return line
             if cue.startswith("#EXT-X-CUE-OUT"):
@@ -262,7 +262,7 @@ class CuePuller:
                 finally:
                     self.cue_state = "OUT"
                 self.clear()
-                print(f"{head}{self.dur_stuff()}")
+                print(f"{head}{self.dur_stuff()}\n")
                 return line
         return line
 
@@ -273,9 +273,16 @@ class CuePuller:
         self.clear()
         line = line.replace("\n", "")
         print(
-            f"\n{iso8601()}{REV}Invalid{NORM}{self.pts_stuff()}{self.media_stuff()}{NSUB}Tag: {line}"
+            f"\n{iso8601()}{REV}Invalid{NORM}{self.pts_stuff()}{self.media_stuff()}{NSUB}Tag: {line}\n"
         )
         return "## " + line
+
+    def show_tags(self, tags):
+        try:
+            for k, v in tags.items():
+                print(f"{SUB}{k}: {v}")
+        except:
+            return
 
     def chk_x_cue_out_cont(self, tags, line):
         """
@@ -283,22 +290,32 @@ class CuePuller:
         #EXT-X-CUE-OUT-CONT tags
         """
         cont_tags = tags["#EXT-X-CUE-OUT-CONT"]
-        if self.cue_state not in ["OUT", "CONT"] and not self.cont_resume:
-            self.cont_resume = True
+        if self.cue_state not in ["OUT", "CONT"] and not self.first_segment:
             return self.invalid(line)
-        if self.cont_resume:
-            print(f"{iso8601()} {REV} Resuming {NORM} {line}")
-            self.cont_resume = False
+        if self.first_segment:
+            print(f"{iso8601()}{REV}Resuming Ad Break{NORM}\n")
             self.cue_state = "CONT"
         if self.break_timer is None:
             if "ElapsedTime" in cont_tags:
                 self.break_timer = cont_tags["ElapsedTime"]
-                print(
-                    f"{iso8601()}{SUB}Setting break timer to {cont_tags['ElapsedTime']}"
-                )
+            else:
+                try:
+                    self.break_timer = float(line.split(":", 1)[1].split("/")[0])
+                except:
+                    self.break_timer = 0.0
+            print(f"{iso8601()}{REV}Setting{NORM} Break Timer to {self.break_timer}\n")
             if "Duration" in cont_tags:
                 self.break_duration = cont_tags["Duration"]
-                print(f"{iso8601()}{SUB}Setting duration to {cont_tags['Duration']}")
+            else:
+                try:
+                    self.break_duration = float(line.split(":", 1)[1].split("/")[1])
+                except:
+                    self.break_duration = None
+            if self.break_duration:
+                print(
+                    f"{iso8601()}{REV}Setting{NORM} Duration to {self.break_duration}\n"
+                )
+
         return line
 
     def chk_x_cue_in(self, tags, line):
@@ -307,11 +324,10 @@ class CuePuller:
         #EXT-X-CUE-IN tags.
         """
         if self.cue_state in ["OUT", "CONT"]:
-            if self.break_timer is not None:
-                self.cue_state = "IN"
-                line = self.add_cue(line, line)
-                self.reset_break()
-                return line
+            self.cue_state = "IN"
+            line = self.add_cue(line, line)
+            self.reset_break()
+            return line
         return self.invalid(line)
 
     def chk_x_cue_out(self, tags, line):
@@ -341,8 +357,8 @@ class CuePuller:
         """
         chk_x_daterange handles #EXT-X-DATERANGE tags.
         """
-        for k, v in tags["#EXT-X-DATERANGE"].items():
-            print(f"{SUB}{k}: {v.strip()}")
+        self.show_tags(tags["#EXT-X-DATERANGE"])
+        print()
         for scte35_tag in ["SCTE35-OUT", "SCTE35-IN"]:
             if scte35_tag in tags["#EXT-X-DATERANGE"]:
                 return self.add_cue(tags["#EXT-X-DATERANGE"][scte35_tag], line)
@@ -383,7 +399,7 @@ class CuePuller:
                 if self.break_timer >= self.break_duration:
                     self.cue_state = "IN"
                     print(
-                        f"{iso8601()} {REV}AUTO CUE-IN{NORM}{self.pts_stuff}{self.diff_stuff()}{self.media_stuff()}"
+                        f"{iso8601()}{REV}AUTO CUE-IN{NORM}{self.pts_stuff()}{self.diff_stuff()}{self.media_stuff()}\n"
                     )
                     self.reset_break()
                     return "\n#AUTO\n#EXT-X-CUE-IN\n" + line
@@ -427,7 +443,10 @@ class CuePuller:
             if self.break_duration:
                 stuff = f"{stuff} / {round(self.break_duration,3)}"
         print(
-            f"\r\r{iso8601()}{REV}{self.hls_pts}{NORM} {self.pts} {stuff}", end="\r\r"
+            f"\r\r{iso8601()}{REV}{self.hls_pts}{NORM} {self.pts} {stuff}",
+            end="\r\r",
+            file=sys.stderr,
+            flush=True,
         )
 
     def chk_ts(self, this):
@@ -452,7 +471,7 @@ class CuePuller:
                     self.to_sidecar(pts, cue)
                     self.clear()
                     print(
-                        f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{self.media_stuff()}{NSUB}Cue: {cue.encode()}"
+                        f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{self.media_stuff()}{NSUB}Cue: {cue.encode()}\n"
                     )
                 self.print_time()
 
@@ -480,7 +499,8 @@ class CuePuller:
             this = this.replace("\n", "")
             self.chk_ts(this)
             self.chk_aac(this)
-            self.media = self.media[-(self.window_size + 1) :]
+            if len(self.media) > self.window_size + 1:
+                self.media.popleft()
             return True
         return False
 
@@ -577,6 +597,7 @@ class CuePuller:
                             lines = [self.parse_line(line) for line in lines]
                             pane = Pane(media, lines)
                             self.sliding_window.slide_panes(pane)
+                        self.first_segment = False
                         lines = []
             self.update_cue_state()
             time.sleep(self.sleep_duration)
