@@ -1,24 +1,30 @@
 ```smalltalk
                                                                                 
-2023-08-29T10:30:19.39Z OUT 
-			PTS: 72829.7572
-			Media: seg81.ts
-			Duration: 119.986533
+2023-08-30T10:57:29.61Z Resuming Ad Break
+
+2023-08-30T10:57:29.61Z Setting Break Timer to 2.0
+
+2023-08-30T10:57:29.61Z Setting Duration to 119.986533
+
                                                                                 
-2023-08-29T10:30:19.43Z IN 
+2023-08-30T10:57:29.69Z IN 
 			PTS: 72947.8752
 			Media: seg140.ts
 			Diff: 0.064734
+
                                                                                 
-2023-08-29T10:30:19.43Z SCTE-35
+2023-08-30T10:57:29.70Z SCTE-35
 			PTS: 72949.8772
 			Media: seg141.ts
 			Cue: /DAsAAAAAyiYAP/wCgUAAAABf1+ZmQEBABECD0NVRUkAAAAAf4ABADUAAC2XQZU=
+
                                                                                 
-2023-08-29T10:30:19.43Z Invalid
+2023-08-30T10:57:29.70Z Invalid
 			PTS: 72955.8832
 			Media: seg144.ts
 			Tag: #EXT-X-CUE-IN
+
+2023-08-30T10:57:29.70Z PTS 72959.8872 
 
 ```
 
@@ -30,7 +36,7 @@
 * Automatic AES Decryption for MPEGTS segments.
 * Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
  
-##  Latest Version is `1.0.15`
+##  Latest Version is `1.0.17`
 
 ## Install 
 * Use pip to install
