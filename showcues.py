@@ -122,14 +122,14 @@ class AacParser:
         return id3len
 
     @staticmethod
-    def syncsafe3(somebytes):
+    def syncsafe5(somebytes):
         """
-        syncsafe3 parses sync safe integers from ID3 tags.
+        syncsafe3 parses PTS from ID3 tags.
         """
         lsb = len(somebytes) - 1
         syncd = 0
         for idx, b in enumerate(somebytes):
-            syncd += (b + (b & 128)) << ((lsb - idx) << 3)
+            syncd += (b << ((lsb - idx) << 3))
         return round(syncd / 90000.0, 6)
 
     def parse(self, media):
@@ -167,6 +167,7 @@ class CuePuller:
         self.window_size = None
         self.sliding_window = None
         self.cue_state = None
+        self.last_cue = None
         self.pts = 0
         self.first_segment = True
         self.hls_pts = "HLS"
@@ -179,6 +180,7 @@ class CuePuller:
         clear previous line.
         """
         print(" " * 80, end="\r")
+        print(" " * 80, file=sys.stderr, end="\r", flush=True)
 
     def chk_aes(self, line):
         """
@@ -199,7 +201,7 @@ class CuePuller:
         to_sidecar writes pts,cue pairs to the sidecar file.
         """
         with open(self.sidecar, "a") as sidecar:
-            sidecar.write(f"{pts},{cue.encode()}")
+            sidecar.write(f"{pts},{cue.encode()}\n")
 
     def media_stuff(self):
         """
@@ -243,14 +245,13 @@ class CuePuller:
         calls six2five to replace time signals
         """
         cue = cue.replace("\r", "").replace("\n", "")
+        line = line.replace("\n", "")
         if "CONT" not in line:
-            head = (
-                f"\n{iso8601()}{self.cue_stuff()}{self.pts_stuff()}{self.media_stuff()}"
-            )
+            head = f"\n{iso8601()}{self.cue_stuff()}{self.pts_stuff()}{NSUB}Tag: {line}"
             if cue.startswith("#EXT-X-CUE-IN"):
                 self.cue_state = "IN"
                 self.clear()
-                print(f"{head}{self.diff_stuff()}\n")
+                print(f"{head}{self.diff_stuff()}{self.media_stuff()}\n")
                 self.reset_break()
                 return line
             if cue.startswith("#EXT-X-CUE-OUT"):
@@ -262,7 +263,7 @@ class CuePuller:
                 finally:
                     self.cue_state = "OUT"
                 self.clear()
-                print(f"{head}{self.dur_stuff()}\n")
+                print(f"{head}{self.dur_stuff()}{self.media_stuff()}\n")
                 return line
         return line
 
@@ -273,7 +274,7 @@ class CuePuller:
         self.clear()
         line = line.replace("\n", "")
         print(
-            f"\n{iso8601()}{REV}Invalid{NORM}{self.pts_stuff()}{self.media_stuff()}{NSUB}Tag: {line}\n"
+            f"\n{iso8601()}{REV}Invalid{NORM}{self.pts_stuff()}{NSUB}Tag: {line}{self.media_stuff()}\n"
         )
         return "## " + line
 
@@ -313,7 +314,7 @@ class CuePuller:
                     self.break_duration = None
             if self.break_duration:
                 print(
-                    f"{iso8601()}{REV}Setting{NORM} Duration to {self.break_duration}\n"
+                    f"{iso8601()}{REV}Setting{NORM} Break Duration to {self.break_duration}\n"
                 )
 
         return line
@@ -358,7 +359,7 @@ class CuePuller:
         chk_x_daterange handles #EXT-X-DATERANGE tags.
         """
         self.show_tags(tags["#EXT-X-DATERANGE"])
-        print()
+        #   print()
         for scte35_tag in ["SCTE35-OUT", "SCTE35-IN"]:
             if scte35_tag in tags["#EXT-X-DATERANGE"]:
                 return self.add_cue(tags["#EXT-X-DATERANGE"][scte35_tag], line)
@@ -398,6 +399,7 @@ class CuePuller:
             if self.break_timer and self.break_duration:
                 if self.break_timer >= self.break_duration:
                     self.cue_state = "IN"
+                    self.clear()
                     print(
                         f"{iso8601()}{REV}AUTO CUE-IN{NORM}{self.pts_stuff()}{self.diff_stuff()}{self.media_stuff()}\n"
                     )
@@ -449,11 +451,45 @@ class CuePuller:
             flush=True,
         )
 
+    def ts_cue_stuff(self, cue):
+        cue_stuff = ""
+        inout = None
+        duration = None
+        if cue.encode() == self.last_cue:
+            return cue_stuff
+        self.last_cue == cue.encode()
+        if cue.command.command_type == 5:
+            inout = "IN"
+            if cue.command.out_of_network_indicator:
+                inout = "OUT"
+                if "break_duration" in vars(cue.command):
+                    duration = cue.command.break_duration
+        segStarts = [0x22, 0x30, 0x32, 0x34, 0x36, 0x38, 0x3A, 0x3C, 0x3E, 0x44, 0x46]
+        segStops = [0x23, 0x31, 0x33, 0x35, 0x37, 0x39, 0x3B, 0x3D, 0x3F, 0x45, 0x47]
+        if cue.command.command_type == 6:
+            for dscptr in cue.descriptors:
+                if dscptr.tag == 2:
+                    if dscptr.segmentation_type_id in segStarts:
+                        inout = "OUT"
+                        if "segmentation_duration" in vars(dscptr):
+                            duration = dscptr.segmentation_duration
+                    if dscptr.segmentation_type_id in segStops:
+                        inout = "IN"
+        cue_stuff = f"Command: {cue.command.name}"
+        if inout:
+            cue_stuff = f"{cue_stuff} {inout}"
+        if duration:
+            cue_stuff = f"{cue_stuff}{NSUB}Duration: {duration}"
+        cue_stuff = f"{cue_stuff}"
+        return cue_stuff
+
     def chk_ts(self, this):
         """
         chk_ts  check MPEGTS for PTS and SCTE-35.
         """
         if ".ts" in this:
+            if self.first_segment:
+                Segment(this, key_uri=self.key_uri, iv=self.iv).show()
             seg = Segment(this, key_uri=self.key_uri, iv=self.iv)
             seg.shushed()
             seg.decode()
@@ -463,15 +499,16 @@ class CuePuller:
                 for cue in seg.cues:
                     cue.decode()
                     pts = self.pts
-                    if cue.command.pts_time:
+                    if "pts_time" in vars(cue.command):
                         pts = (
                             cue.command.pts_time + cue.info_section.pts_adjustment
                         ) % ROLLOVER
                         pts = round(pts, 6)
                     self.to_sidecar(pts, cue)
+                    cue_stuff = self.ts_cue_stuff(cue)
                     self.clear()
                     print(
-                        f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{self.media_stuff()}{NSUB}Cue: {cue.encode()}\n"
+                        f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{NSUB}{cue_stuff}{self.media_stuff()}\n"
                     )
                 self.print_time()
 
