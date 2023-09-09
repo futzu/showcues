@@ -136,7 +136,11 @@ class AacParser:
         """
         aac_pts parses the ID3 header tags in aac and ac3 audio files
         """
-        aac = reader(media)
+        try:
+            aac = reader(media)
+        except:
+            time.sleep(5)
+            aac = reader(media)
         header = aac.read(10)
         if self.is_header(header):
             id3len = self.id3_len(header)
@@ -488,8 +492,11 @@ class CuePuller:
         """
         if ".ts" in this:
             if self.first_segment:
-                Segment(this, key_uri=self.key_uri, iv=self.iv).show()
-                print()
+                try:
+                    Segment(this, key_uri=self.key_uri, iv=self.iv).show()
+                    print()
+                except:
+                    time.sleep(5)
                 self.first_segment = False
             seg = Segment(this, key_uri=self.key_uri, iv=self.iv)
             seg.shushed()
@@ -671,10 +678,16 @@ def cli():
             ]
     if playlists:
         m3u8 = playlists[0].media
+        m3u8 = 'https'+m3u8.split('https')[-1]
+        print('M3u8',m3u8)
     else:
         m3u8 = sys.argv[1]
     cp = CuePuller()
-    cp.pull(m3u8)
+    try:
+        cp.pull(m3u8)
+    except:
+        time.sleep(5)
+        cp.pull(m3u8)
     print()
 
 
