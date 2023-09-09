@@ -148,6 +148,7 @@ class AacParser:
                 except:
                     pts = self.syncsafe5(data.split(self.applehead)[1])
                 finally:
+                    self.first_segment = False
                     return round((pts % ROLLOVER), 6)
 
 
@@ -475,6 +476,7 @@ class CuePuller:
                             duration = dscptr.segmentation_duration
                     if dscptr.segmentation_type_id in segStops:
                         inout = "IN"
+        cue.decode()
         cue_stuff = f"Command: {cue.command.name}"
         if inout:
             cue_stuff = f"{cue_stuff} {inout}"
@@ -490,6 +492,7 @@ class CuePuller:
             if self.first_segment:
                 Segment(this, key_uri=self.key_uri, iv=self.iv).show()
                 print()
+                self.first_segment = False
             seg = Segment(this, key_uri=self.key_uri, iv=self.iv)
             seg.shushed()
             seg.decode()
@@ -519,6 +522,7 @@ class CuePuller:
         """
         if ".aac" in this or ".ac3" in this:
             aac_parser = AacParser()
+            self.first_segment = False
             pts = aac_parser.parse(this)
             if pts:
                 self.pts = pts
@@ -533,9 +537,6 @@ class CuePuller:
         """
         if this not in self.media:
             self.media.append(this)
-            this = this.replace("\n", "")
-            self.chk_ts(this)
-            self.chk_aac(this)
             if len(self.media) > self.window_size + 1:
                 self.media.popleft()
             return True
@@ -632,10 +633,13 @@ class CuePuller:
                             media = self.base_uri + "/" + media
                         if self.new_media(media):
                             lines = [self.parse_line(line) for line in lines]
+                            this = media
+                            this = this.replace("\n", "")
+                            self.chk_ts(this)
+                            self.chk_aac(this)
                             pane = Pane(media, lines)
                             self.sliding_window.slide_panes(pane)
                         lines = []
-                        self.first_segment = False
             self.update_cue_state()
             time.sleep(self.sleep_duration)
 
