@@ -36,7 +36,7 @@
 * Automatic AES Decryption for MPEGTS segments.
 * Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
  
-##  Latest Version is `1.0.23`
+##  Latest Version is `1.0.25`
 
 ## Install 
 * Use pip to install
