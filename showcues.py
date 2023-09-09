@@ -129,18 +129,14 @@ class AacParser:
         lsb = len(somebytes) - 1
         syncd = 0
         for idx, b in enumerate(somebytes):
-            syncd += (b << ((lsb - idx) << 3))
+            syncd += b << ((lsb - idx) << 3)
         return round(syncd / 90000.0, 6)
 
     def parse(self, media):
         """
         aac_pts parses the ID3 header tags in aac and ac3 audio files
         """
-        try:
-            aac = reader(media)
-        except:
-            time.sleep(5)
-            aac = reader(media)
+        aac = reader(media)
         header = aac.read(10)
         if self.is_header(header):
             id3len = self.id3_len(header)
@@ -259,7 +255,7 @@ class CuePuller:
                 self.reset_break()
                 return line
             if cue.startswith("#EXT-X-CUE-OUT"):
-                self.break_timer == 0.0
+                self.break_timer = 0.0
                 try:
                     self.break_duration = atoif(line.split(":")[1])
                 except:
@@ -461,7 +457,7 @@ class CuePuller:
         duration = None
         if cue.encode() == self.last_cue:
             return cue_stuff
-        self.last_cue == cue.encode()
+        self.last_cue = cue.encode()
         if cue.command.command_type == 5:
             inout = "IN"
             if cue.command.out_of_network_indicator:
@@ -492,12 +488,8 @@ class CuePuller:
         """
         if ".ts" in this:
             if self.first_segment:
-                try:
-                    Segment(this, key_uri=self.key_uri, iv=self.iv).show()
-                    print()
-                except:
-                    time.sleep(5)
-                self.first_segment = False
+                Segment(this, key_uri=self.key_uri, iv=self.iv).show()
+                print()
             seg = Segment(this, key_uri=self.key_uri, iv=self.iv)
             seg.shushed()
             seg.decode()
@@ -532,8 +524,6 @@ class CuePuller:
                 self.pts = pts
                 self.hls_pts = "PTS"
                 self.print_time()
-            self.first_segment = False
-
 
     def new_media(self, this):
         """
@@ -645,6 +635,7 @@ class CuePuller:
                             pane = Pane(media, lines)
                             self.sliding_window.slide_panes(pane)
                         lines = []
+                        self.first_segment = False
             self.update_cue_state()
             time.sleep(self.sleep_duration)
 
@@ -678,16 +669,12 @@ def cli():
             ]
     if playlists:
         m3u8 = playlists[0].media
-        m3u8 = 'https'+m3u8.split('https')[-1]
-        print('M3u8',m3u8)
+        m3u8 = "https" + m3u8.split("https")[-1]
+        print("M3u8", m3u8)
     else:
         m3u8 = sys.argv[1]
     cp = CuePuller()
-    try:
-        cp.pull(m3u8)
-    except:
-        time.sleep(5)
-        cp.pull(m3u8)
+    cp.pull(m3u8)
     print()
 
 
