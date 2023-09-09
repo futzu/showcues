@@ -124,7 +124,7 @@ class AacParser:
     @staticmethod
     def syncsafe5(somebytes):
         """
-        syncsafe3 parses PTS from ID3 tags.
+        syncsafe5 parses PTS from ID3 tags.
         """
         lsb = len(somebytes) - 1
         syncd = 0
@@ -146,7 +146,7 @@ class AacParser:
                 try:
                     pts = float(data.split(self.applehead)[1].split(b"\x00", 2)[1])
                 except:
-                    pts = self.syncsafe3(data.split(self.applehead)[1])
+                    pts = self.syncsafe5(data.split(self.applehead)[1])
                 finally:
                     return round((pts % ROLLOVER), 6)
 
@@ -480,7 +480,6 @@ class CuePuller:
             cue_stuff = f"{cue_stuff} {inout}"
         if duration:
             cue_stuff = f"{cue_stuff}{NSUB}Duration: {duration}"
-        cue_stuff = f"{cue_stuff}"
         return cue_stuff
 
     def chk_ts(self, this):
@@ -490,27 +489,29 @@ class CuePuller:
         if ".ts" in this:
             if self.first_segment:
                 Segment(this, key_uri=self.key_uri, iv=self.iv).show()
+                print()
+                self.first_segment = False
             seg = Segment(this, key_uri=self.key_uri, iv=self.iv)
             seg.shushed()
             seg.decode()
             if seg.pts_start:
                 self.pts = seg.pts_start
                 self.hls_pts = "PTS"
-                for cue in seg.cues:
-                    cue.decode()
-                    pts = self.pts
-                    if "pts_time" in vars(cue.command):
-                        pts = (
-                            cue.command.pts_time + cue.info_section.pts_adjustment
-                        ) % ROLLOVER
-                        pts = round(pts, 6)
-                    self.to_sidecar(pts, cue)
-                    cue_stuff = self.ts_cue_stuff(cue)
-                    self.clear()
-                    print(
-                        f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{NSUB}{cue_stuff}{self.media_stuff()}\n"
-                    )
-                self.print_time()
+            for cue in seg.cues:
+                cue.decode()
+                pts = self.pts
+                if "pts_time" in vars(cue.command):
+                    pts = (
+                        cue.command.pts_time + cue.info_section.pts_adjustment
+                    ) % ROLLOVER
+                    pts = round(pts, 6)
+                self.to_sidecar(pts, cue)
+                cue_stuff = self.ts_cue_stuff(cue)
+                self.clear()
+                print(
+                    f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{NSUB}{cue_stuff}{self.media_stuff()}\n"
+                )
+            self.print_time()
 
     def chk_aac(self, this):
         """
@@ -524,6 +525,8 @@ class CuePuller:
                 self.pts = pts
                 self.hls_pts = "PTS"
                 self.print_time()
+            self.first_segment = False
+
 
     def new_media(self, this):
         """
@@ -634,7 +637,6 @@ class CuePuller:
                             lines = [self.parse_line(line) for line in lines]
                             pane = Pane(media, lines)
                             self.sliding_window.slide_panes(pane)
-                        self.first_segment = False
                         lines = []
             self.update_cue_state()
             time.sleep(self.sleep_duration)
