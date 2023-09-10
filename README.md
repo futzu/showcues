@@ -1,34 +1,46 @@
-```smalltalk
-                                                                                
-2023-08-30T10:57:29.61Z Resuming Ad Break
+# showcues is a tool for debugging SCTE-35 in HLS.
 
-2023-08-30T10:57:29.61Z Setting Break Timer to 2.0
+```lua
+2023-09-10T01:56:07.06Z Started
+			Manifest: ../a_b_c/index.m3u8
+			Window Size: 65
+			Target Duration: 3
 
-2023-08-30T10:57:29.61Z Setting Duration to 119.986533
+2023-09-10T01:56:07.06Z Resuming Ad Break
+2023-09-10T01:56:07.06Z Setting Break Timer to 2.0
+2023-09-10T01:56:07.06Z Setting Break Duration to 119.986533
 
-                                                                                
-2023-08-30T10:57:29.69Z IN 
-			PTS: 72947.8752
-			Media: seg140.ts
-			Diff: 0.064734
+Program: 1
+    Service:	
+    Provider:	
+    Pid:	480
+    Pcr Pid:	481
+    Streams:
+		Pid: 481[0x1e1]	Type: 0x1b AVC Video
+		Pid: 482[0x1e2]	Type: 0xf AAC Audio
+		Pid: 483[0x1e3]	Type: 0x86 SCTE35 Data
+		Pid: 484[0x1e4]	Type: 0x15 ID3 Timed Meta Data
 
-                                                                                
-2023-08-30T10:57:29.70Z SCTE-35
-			PTS: 72949.8772
-			Media: seg141.ts
-			Cue: /DAsAAAAAyiYAP/wCgUAAAABf1+ZmQEBABECD0NVRUkAAAAAf4ABADUAAC2XQZU=
-
-                                                                                
-2023-08-30T10:57:29.70Z Invalid
-			PTS: 72955.8832
-			Media: seg144.ts
+2023-09-10T01:56:07.23Z IN 
+			PTS: 72945.8732
 			Tag: #EXT-X-CUE-IN
+			Diff: 0.064734
+			Media: seg140.ts
 
-2023-08-30T10:57:29.70Z PTS 72959.8872 
+2023-09-10T01:56:07.24Z SCTE-35
+			PTS: 72949.8772
+			Command: Splice Insert IN
+			Media: seg141.ts
 
+2023-09-10T01:56:07.24Z Invalid
+			PTS: 72953.8812
+			Tag: #EXT-X-CUE-IN
+			Media: seg144.ts
+
+2023-09-10T01:56:07.24Z PTS 72959.8872 
+                                                                     
 ```
 
-# showcues is a tool for debugging SCTE-35 in HLS.
 * Display HLS CUE-OUT and CUE-IN tags with wall clock times.
 * Displays SCTE-35 Cues from SCTE-35 streams in MPEGTS segments.
 * Displays invalid SCTE=35 HLS Tags.
