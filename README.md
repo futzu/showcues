@@ -74,7 +74,7 @@ pypy3 -mpip install  --upgrade showcues
    
 ```rebol
 
-showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index.m3u8
+showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/master.m3u8
 # OR
 showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_1.m3u8
 
