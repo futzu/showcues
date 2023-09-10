@@ -166,7 +166,7 @@ class CuePuller:
         self.reload = True
         self.sleep_duration = 0
         self.window_size = None
-        self.sliding_window = None
+        self.sliding_window = SlidingWindow()
         self.cue_state = None
         self.last_cue = None
         self.pts = 0
@@ -502,7 +502,7 @@ class CuePuller:
             for cue in seg.cues:
                 cue.decode()
                 pts = self.pts
-                if "pts_time" in vars(cue.command):
+                if "pts_time" in vars(cue.command) and cue.command.pts_time:
                     pts = (
                         cue.command.pts_time + cue.info_section.pts_adjustment
                     ) % ROLLOVER
@@ -674,7 +674,6 @@ def cli():
     if playlists:
         m3u8 = playlists[0].media
         m3u8 = "https" + m3u8.split("https")[-1]
-        print("M3u8", m3u8)
     else:
         m3u8 = sys.argv[1]
     cp = CuePuller()
