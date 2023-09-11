@@ -240,10 +240,10 @@ class CuePuller:
         """
         return f"{NSUB}{self.hls_pts}: {self.pts}"
 
-    def add_cue(self, cue, line):
+    def set_cue_state(self, cue, line):
         """
-        add_cue determines cue_state and
-        calls six2five to replace time signals
+        set_cue_state determines cue_state
+
         """
         cue = cue.replace("\r", "").replace("\n", "")
         line = line.replace("\n", "")
@@ -286,6 +286,30 @@ class CuePuller:
         except:
             return
 
+    def _set_break_timer(self, line, cont_tags):
+        if self.break_timer is None:
+            if "ElapsedTime" in cont_tags:
+                self.break_timer = cont_tags["ElapsedTime"]
+            else:
+                try:
+                    self.break_timer = float(line.split(":", 1)[1].split("/")[0])
+                except:
+                    self.break_timer = 0.0
+            print(f"{iso8601()}{REV}Setting{NORM} Break Timer to {self.break_timer}\n")
+
+    def _set_break_duration(self, line, cont_tags):
+        if "Duration" in cont_tags:
+            self.break_duration = cont_tags["Duration"]
+        else:
+            try:
+                self.break_duration = float(line.split(":", 1)[1].split("/")[1])
+            except:
+                self.break_duration = None
+        if self.break_duration:
+            print(
+                f"{iso8601()}{REV}Setting{NORM} Break Duration to {self.break_duration}\n"
+            )
+
     def chk_x_cue_out_cont(self, tags, line):
         """
         chk_x_cue_out_const processes
@@ -297,27 +321,8 @@ class CuePuller:
         if self.first_segment:
             print(f"{iso8601()}{REV}Resuming Ad Break{NORM}\n")
             self.cue_state = "CONT"
-        if self.break_timer is None:
-            if "ElapsedTime" in cont_tags:
-                self.break_timer = cont_tags["ElapsedTime"]
-            else:
-                try:
-                    self.break_timer = float(line.split(":", 1)[1].split("/")[0])
-                except:
-                    self.break_timer = 0.0
-            print(f"{iso8601()}{REV}Setting{NORM} Break Timer to {self.break_timer}\n")
-            if "Duration" in cont_tags:
-                self.break_duration = cont_tags["Duration"]
-            else:
-                try:
-                    self.break_duration = float(line.split(":", 1)[1].split("/")[1])
-                except:
-                    self.break_duration = None
-            if self.break_duration:
-                print(
-                    f"{iso8601()}{REV}Setting{NORM} Break Duration to {self.break_duration}\n"
-                )
-
+            self._set_break_timer(line, cont_tags)
+            self._set_break_duration(line, cont_tags)
         return line
 
     def chk_x_cue_in(self, tags, line):
@@ -327,7 +332,7 @@ class CuePuller:
         """
         if self.cue_state in ["OUT", "CONT"]:
             self.cue_state = "IN"
-            line = self.add_cue(line, line)
+            line = self.set_cue_state(line, line)
             self.reset_break()
             return line
         return self.invalid(line)
@@ -344,7 +349,7 @@ class CuePuller:
                 self.break_timer = 0.0
             if ":" in line:
                 self.break_duration = atoif(line.split(":")[1])
-            return self.add_cue(line, line)
+            return self.set_cue_state(line, line)
         return self.invalid(line)
 
     def chk_x_scte35(self, tags, line):
@@ -352,7 +357,7 @@ class CuePuller:
         chk_x_scte35 handles #EXT-X-SCTE35 tags.
         """
         if "CUE" in tags["#EXT-X-SCTE35"]:
-            return self.add_cue(tags["#EXT-X-SCTE35"]["CUE"], line)
+            return self.set_cue_state(tags["#EXT-X-SCTE35"]["CUE"], line)
         return line
 
     def chk_x_daterange(self, tags, line):
@@ -363,7 +368,7 @@ class CuePuller:
         #   print()
         for scte35_tag in ["SCTE35-OUT", "SCTE35-IN"]:
             if scte35_tag in tags["#EXT-X-DATERANGE"]:
-                return self.add_cue(tags["#EXT-X-DATERANGE"][scte35_tag], line)
+                return self.set_cue_state(tags["#EXT-X-DATERANGE"][scte35_tag], line)
         return line
 
     def chk_x_oatcls(self, tags, line):
@@ -372,7 +377,7 @@ class CuePuller:
         #EXT-OATCLS-SCTE35
         HLS tags.
         """
-        return self.add_cue(tags["#EXT-OATCLS-SCTE35"], line)
+        return self.set_cue_state(tags["#EXT-OATCLS-SCTE35"], line)
 
     def scte35(self, line):
         """
@@ -445,6 +450,7 @@ class CuePuller:
             stuff = f"{REV}Break{NORM} {round(self.break_timer,3)}"
             if self.break_duration:
                 stuff = f"{stuff} / {round(self.break_duration,3)}"
+        self.clear()
         print(
             f"\r\r{iso8601()}{REV}{self.hls_pts}{NORM} {self.pts} {stuff}",
             end="\r\r",
@@ -452,19 +458,20 @@ class CuePuller:
             flush=True,
         )
 
-    def ts_cue_stuff(self, cue):
-        cue_stuff = ""
+    def _ts_splice_insert(self, cue):
         inout = None
         duration = None
-        if cue.encode() == self.last_cue:
-            return cue_stuff
-        self.last_cue = cue.encode()
         if cue.command.command_type == 5:
             inout = "IN"
             if cue.command.out_of_network_indicator:
                 inout = "OUT"
                 if "break_duration" in vars(cue.command):
                     duration = cue.command.break_duration
+        return inout, duration
+
+    def _ts_time_signal(self, cue):
+        inout = None
+        duration = None
         segStarts = [0x22, 0x30, 0x32, 0x34, 0x36, 0x38, 0x3A, 0x3C, 0x3E, 0x44, 0x46]
         segStops = [0x23, 0x31, 0x33, 0x35, 0x37, 0x39, 0x3B, 0x3D, 0x3F, 0x45, 0x47]
         if cue.command.command_type == 6:
@@ -476,6 +483,16 @@ class CuePuller:
                             duration = dscptr.segmentation_duration
                     if dscptr.segmentation_type_id in segStops:
                         inout = "IN"
+        return inout, duration
+
+    def ts_cue_stuff(self, cue):
+        cue_stuff = ""
+        if cue.encode() == self.last_cue:
+            return cue_stuff
+        self.last_cue = cue.encode()
+        inout, duration = self._ts_splice_insert(cue)
+        if not inout:
+            inout, duration = self._ts_time_signal(cue)
         cue.decode()
         cue_stuff = f"Command: {cue.command.name}"
         if inout:
@@ -609,6 +626,31 @@ class CuePuller:
         if "#EXT-X-ENDLIST" in line:
             self.reload = False
 
+    def _parse_manifest(self, manifest):
+        with reader(manifest) as m3u8:
+            lines = []
+            m3u8_lines = self.decode_lines(m3u8.readlines())
+            self.mk_window_size(m3u8_lines)
+            for line in m3u8_lines:
+                self.chk_endlist(line)
+                if line.startswith("#"):
+                    if not self.parse_header(line):
+                        lines.append(line)
+                else:
+                    media = line
+                    if not media.startswith("http"):
+                        media = self.base_uri + "/" + media
+                    if self.new_media(media):
+                        lines = [self.parse_line(line) for line in lines]
+                        media = media.replace("\n", "")
+                        self.chk_ts(media)
+                        self.chk_aac(media)
+                        pane = Pane(media, lines)
+                        self.sliding_window.slide_panes(pane)
+                    lines = []
+        self.update_cue_state()
+        time.sleep(self.sleep_duration)
+
     def pull(self, manifest):
         """
         pull m3u8 and parse it.
@@ -618,30 +660,7 @@ class CuePuller:
         self.base_uri = manifest.rsplit("/", 1)[0]
         self.sliding_window = SlidingWindow()
         while self.reload:
-            with reader(manifest) as m3u8:
-                lines = []
-                m3u8_lines = self.decode_lines(m3u8.readlines())
-                self.mk_window_size(m3u8_lines)
-                for line in m3u8_lines:
-                    self.chk_endlist(line)
-                    if line.startswith("#"):
-                        if not self.parse_header(line):
-                            lines.append(line)
-                    else:
-                        media = line
-                        if not media.startswith("http"):
-                            media = self.base_uri + "/" + media
-                        if self.new_media(media):
-                            lines = [self.parse_line(line) for line in lines]
-                            this = media
-                            this = this.replace("\n", "")
-                            self.chk_ts(this)
-                            self.chk_aac(this)
-                            pane = Pane(media, lines)
-                            self.sliding_window.slide_panes(pane)
-                        lines = []
-            self.update_cue_state()
-            time.sleep(self.sleep_duration)
+            self._parse_manifest(manifest)
 
 
 def cli():
