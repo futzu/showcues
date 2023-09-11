@@ -19,7 +19,7 @@ setuptools.setup(
     url="https://github.com/futzu/showcues",
     install_requires=[
         'new_reader >= 0.1.7',
-        'm3ufu >= 0.0.69',
+        'm3ufu >= 0.0.73',
         'threefive >= 2.4.9',
     ],
     py_modules=["showcues"],
