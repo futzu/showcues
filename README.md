@@ -1,5 +1,15 @@
 # showcues is a tool for debugging SCTE-35 in HLS.
 
+* Display HLS CUE-OUT and CUE-IN tags with wall clock times.
+* Displays SCTE-35 Cues from SCTE-35 streams in MPEGTS segments.
+* Displays invalid SCTE=35 HLS Tags.
+* Displays Break duration and diff.
+* Automatic AES Decryption for MPEGTS segments.
+* Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
+ 
+#  Latest Version is `1.0.29`
+
+
 ```lua
 2023-09-10T01:56:07.06Z Started
 			Manifest: ../a_b_c/index.m3u8
@@ -40,15 +50,6 @@ Program: 1
 2023-09-10T01:56:07.24Z PTS 72959.8872 
                                                                      
 ```
-
-* Display HLS CUE-OUT and CUE-IN tags with wall clock times.
-* Displays SCTE-35 Cues from SCTE-35 streams in MPEGTS segments.
-* Displays invalid SCTE=35 HLS Tags.
-* Displays Break duration and diff.
-* Automatic AES Decryption for MPEGTS segments.
-* Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
- 
-##  Latest Version is `1.0.29`
 
 ## Install 
 * Use pip to install
