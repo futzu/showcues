@@ -1,12 +1,11 @@
-
-
 #!/usr/bin/env python3
 
+# https://c4af3793bf76b33c.mediapackage.us-west-2.amazonaws.com/out/v1/547e1b8d09444666ac810f6f8c78ca82/index.m3u8
 import datetime
 import sys
 import time
 from collections import deque
-from threefive import Segment
+from threefive import Segment, Cue
 from m3ufu import M3uFu, TagParser, HEADER_TAGS
 from new_reader import reader
 
@@ -61,11 +60,12 @@ class Scte35Profile:
         
         
         """
-        self.parse_segments = True
-        self.parse_manifests = False
-        self.hls_tags = ["#EXT-X-DATERANGE","#EXT-X-SCTE35","#EXT-OATCLS-SCTE35",
-                        "#EXT-X-CUE-OUT","#EXT-X-CUE-IN","#EXT-X-CUE-OUT-CONT",]
-        self.commands_types =[5,6,]
+        self.parse_segments = False
+        self.parse_manifests = True 
+        self.hls_tags =["#EXT-OATCLS-SCTE35",
+                        ] #"#EXT-X-DATERANGE","#EXT-X-SCTE35",
+                          # "#EXT-X-CUE-IN","#EXT-X-CUE-OUT-CONT",] 
+        self.commands_types =[6,]
         self.descriptor_tags = [2,]
         self.starts = [0x22, 0x30, 0x32, 0x34, 0x36, 0x38,]
         self.stops = [0x23, 0x31, 0x33, 0x35, 0x37, 0x39,]
@@ -84,6 +84,7 @@ class Scte35Profile:
         if cue.command.command_type in self.commands_types:
             if "pts_time" in vars(cue.command) and cue.command.pts_time:
                 pts = self.set_pts(cue)
+                cue.show()
             if cue.command.command_type == 5:                
                 line =self.validate_splice_insert(cue)
         if cue.command.command_type ==6:
@@ -98,7 +99,7 @@ class Scte35Profile:
                line = f'#EXT-X-CUE-OUT:{duration}'
                return line
         else:
-            line ="EXT-X-CUE-IN"
+            line ="#EXT-X-CUE-IN"
             return line
         return line
 
@@ -112,7 +113,7 @@ class Scte35Profile:
                         line = f'#EXT-X-CUE-OUT:{duration}'
                         return line
                 if dscptr.segmentation_type_id in self.stops:
-                    line ="EXT-X-CUE-IN"
+                    line ="#EXT-X-CUE-IN"
                     return line
         return line                                
   
@@ -218,7 +219,7 @@ class AacParser:
                 try:
                     pts = float(data.split(self.applehead)[1].split(b"\x00", 2)[1])
                 except:
-                    pts = self.syncsafe5(data.split(self.applehead)[1])
+                    pts = self.syncsafe5(data.split(self.applehead)[1][:9])
                 finally:
                     self.first_segment = False
                     return round((pts % ROLLOVER), 6)
@@ -227,7 +228,8 @@ class AacParser:
 class CuePuller:
     def __init__(self):
         self.media = deque()
-        self.sidecar = "sidecar.txt"
+        self.sidecar = "exp-sidecar.txt"
+        self.m3u8 = "exp.m3u8"
         self.base_uri = None
         self.iv = None
         self.key_uri = None
@@ -299,9 +301,12 @@ class CuePuller:
         and if possible the difference between the actual break duration
         and the specified SCTE-35 break duration.
         """
-        if not self.break_duration:
-            return f"{NSUB}Break Timer: {round(self.break_timer,6)}"
-        return f"{NSUB}Diff: {round(self.break_timer - self.break_duration,6)}"
+        if self.break_timer is not None:
+            if not self.break_duration: 
+                return f"{NSUB}Break Timer: {round(self.break_timer,6)}"
+            return f"{NSUB}Diff: {round(self.break_timer - self.break_duration,6)}"
+        return ""
+
 
     def dur_stuff(self):
         """
@@ -320,28 +325,36 @@ class CuePuller:
         set_cue_state determines cue_state
 
         """
+        if cue.encode() == self.last_cue:
+            return ""
+        self.last_cue = cue.encode()
         cue = cue.replace("\r", "").replace("\n", "")
         line = line.replace("\n", "")
         if "CONT" not in line:
             head = f"\n{iso8601()}{self.cue_stuff()}{self.pts_stuff()}{NSUB}Tag: {line}"
-            if cue.startswith("#EXT-X-CUE-IN"):
+            if line.startswith("#EXT-X-CUE-IN"):
+                if self.break_duration and self.break_timer:
+                    if self.break_timer /self.break_duration <0.9:
+                        return self.invalid(line)
                 self.cue_state = "IN"
+                self.to_sidecar(self.pts,line)
                 self.clear()
                 print(f"{head}{self.diff_stuff()}{self.media_stuff()}\n")
                 self.reset_break()
                 return line
-            if cue.startswith("#EXT-X-CUE-OUT"):
+            if line.startswith("#EXT-X-CUE-OUT"):
                 self.break_timer = 0.0
                 try:
                     self.break_duration = atoif(line.split(":")[1])
                 except:
                     pass
-                finally:
-                    self.cue_state = "OUT"
+             #   finally:
+                self.to_sidecar(self.pts,line)
+                self.cue_state = "OUT"
                 self.clear()
                 print(f"{head}{self.dur_stuff()}{self.media_stuff()}\n")
                 return line
-        return line
+        return self.invalid(line)
 
     def invalid(self, line):
         """
@@ -395,9 +408,9 @@ class CuePuller:
             return self.invalid(line)
         if self.first_segment:
             print(f"{iso8601()}{REV}Resuming Ad Break{NORM}\n")
-            self.cue_state = "CONT"
-            self._set_break_timer(line, cont_tags)
-            self._set_break_duration(line, cont_tags)
+        self.cue_state = "CONT"
+        self._set_break_timer(line, cont_tags)
+        self._set_break_duration(line, cont_tags)
         return line
 
     def chk_x_cue_in(self, tags, line):
@@ -432,8 +445,11 @@ class CuePuller:
         chk_x_scte35 handles #EXT-X-SCTE35 tags.
         """
         if "CUE" in tags["#EXT-X-SCTE35"]:
-            return self.set_cue_state(tags["#EXT-X-SCTE35"]["CUE"], line)
-        return line
+            cue = Cue(tags["#EXT-X-SCTE35"]["CUE"])
+            pts,new_line = self.prof.validate_cue(cue)
+            if pts and new_line:
+                return self.set_cue_state(tags["#EXT-X-SCTE35"]["CUE"], new_line)
+        return self.invalid(line)
 
     def chk_x_daterange(self, tags, line):
         """
@@ -443,8 +459,11 @@ class CuePuller:
         #   print()
         for scte35_tag in ["SCTE35-OUT", "SCTE35-IN"]:
             if scte35_tag in tags["#EXT-X-DATERANGE"]:
-                return self.set_cue_state(tags["#EXT-X-DATERANGE"][scte35_tag], line)
-        return line
+                cue = Cue(tags["#EXT-X-DATERANGE"][scte35_tag])
+                pts,new_line = self.prof.validate_cue(cue)
+                if pts and new_line:
+                    return self.set_cue_state(tags["#EXT-X-DATERANGE"][scte35_tag], new_line)
+        return self.invalid(line)
 
     def chk_x_oatcls(self, tags, line):
         """
@@ -452,7 +471,15 @@ class CuePuller:
         #EXT-OATCLS-SCTE35
         HLS tags.
         """
-        return self.set_cue_state(tags["#EXT-OATCLS-SCTE35"], line)
+        cue=Cue(tags["#EXT-OATCLS-SCTE35"])
+        pts,new_line = self.prof.validate_cue(cue)
+        print(pts,new_line)
+        if pts and new_line:
+            if abs(pts -self.pts) > 5:  # Handle NBC Cues out of sync with video PTS
+                pts = self.pts
+           # self.to_sidecar(pts,new_line)                
+            return self.set_cue_state(tags["#EXT-OATCLS-SCTE35"], new_line)
+        return self.invalid(line)
 
     def scte35(self, line):
         """
@@ -564,9 +591,9 @@ class CuePuller:
 
     def ts_cue_stuff(self, cue):
         cue_stuff = ""
-        if cue.encode() == self.last_cue:
-            return cue_stuff
-        self.last_cue = cue.encode()
+ #       if cue.encode() == self.last_cue:
+   #       return cue_stuff
+   #     self.last_cue = cue.encode()
         inout, duration = self._ts_splice_insert(cue)
         if not inout:
             inout, duration = self._ts_time_signal(cue)
@@ -592,18 +619,23 @@ class CuePuller:
             seg.decode()
             if seg.pts_start:
                 self.pts = seg.pts_start
+                self.print_time()
                 self.hls_pts = "PTS"
             if self.prof.parse_segments:
                 for cue in seg.cues:
-                    cue_pts,line = self.prof.validate_cue(cue)
-                    if cue_pts and line:
-                        self.to_sidecar(cue_pts,line)
-                        self.set_cue_state(cue,line)
-                    cue_stuff = self.ts_cue_stuff(cue)
-                    self.clear()
-                    print(
-                        f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}{self.hls_pts}: {pts}{NSUB}{cue_stuff}{self.media_stuff()}\n"
-                    )
+                    if "pts" in vars(cue.packet_data) and cue.packet_data.pts:
+                        self.pts = cue.packet_data.pts
+                    if cue.encode() != self.last_cue:
+                        self.last_cue = cue.encode()
+                        cue_pts,line = self.prof.validate_cue(cue)
+                        if cue_pts and line:
+                            self.to_sidecar(cue_pts,line)
+                            self.set_cue_state(cue.encode(),line)
+                            cue_stuff = self.ts_cue_stuff(cue)
+                            self.clear()
+                            print(
+                            f"\n{iso8601()}{REV}SCTE-35{NORM}{NSUB}Current PTS: {round(self.pts,6)}{NSUB}PreRoll: {round(cue_pts - self.pts,6)}{NSUB}Splice Point: {round(cue_pts,6)}{NSUB}{cue_stuff}{self.media_stuff()}\n"
+                            )
             self.print_time()
 
     def chk_aac(self, this):
@@ -643,7 +675,7 @@ class CuePuller:
         if "TARGETDURATION" in line:
             if self.sleep_duration == 0:
                 target_duration = atoif(line.split(":")[1])
-                self.sleep_duration = round(target_duration * 0.90, 3)
+                self.sleep_duration = round(target_duration * 0.01, 3)
                 print(f"{SUB}Target Duration: {target_duration}\n")
 
     def mk_window_size(self, lines):
@@ -701,20 +733,6 @@ class CuePuller:
         if "#EXT-X-ENDLIST" in line:
             self.reload = False
 
-    def write_manifest(self):
-        """
-        write_manifest writes out the
-        corrected manifest.
-        """
-        with open(self.m3u8, "w") as out:
-            out.write("#EXTM3U\n")
-            out.write("".join(self.headers))
-            out.write(self.sliding_window.all_panes())
-
-
-
-
-
     def _parse_manifest(self, manifest):
         with reader(manifest) as m3u8:
             lines = []
@@ -737,10 +755,8 @@ class CuePuller:
                         pane = Pane(media, lines)
                         self.sliding_window.slide_panes(pane)
                     lines = []
-        self.write_manifest()
         self.update_cue_state()
         time.sleep(self.sleep_duration)
-        self.write_manifest()
 
     def pull(self, manifest):
         """
