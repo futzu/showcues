@@ -7,7 +7,7 @@
 * Automatic AES Decryption for MPEGTS segments.
 * Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
  
-#  Latest Version is `1.0.33`
+#  Latest Version is `1.0.41`
  [showcues cyclomatic complexity score: __A (2.81)__](cc.md)
  
 
