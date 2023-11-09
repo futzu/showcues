@@ -122,7 +122,7 @@ class Scte35Profile:
                 that = False
             else:
                 that = True
-        if this in ["command_types", "descriptor_tags", "starts", "stops"]:
+        if this in ["command_types", "descriptor_tags", "starts"]:
             new_that = []
             for s in that:
                 if s.lower().startswith("0x"):
@@ -1008,7 +1008,6 @@ showcues
 	command_types = 0x6,0x5
 	descriptor_tags = 0x2
 	starts = 0x22,0x30,0x32,0x34,0x36,0x44,0x46
-	stops = 0x23,0x31,0x33,0x35,0x37,0x45,0x47
 
 	( Integers are show in hex (base 16),
 	  base 10 unsigned integers can also be used in sc.profile )
@@ -1027,7 +1026,6 @@ showcues
 
       	starts:            set which Segmentation Type IDs to use to start breaks.
 
-      	stops:             set which Segmentation Type IDs to use to stop breaks.
 
 
     		Edit the file as needed and then run showcues.
