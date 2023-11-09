@@ -7,7 +7,7 @@
 * Automatic AES Decryption for MPEGTS segments.
 * Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
  
-#  Latest Version is `1.0.29`
+#  Latest Version is `1.0.31`
  [showcues cyclomatic complexity score: __A (2.81)__](cc.md)
  
 
@@ -82,6 +82,175 @@ showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/master.m3u8
 showcues https://nmxtunein.akamaized.net/hls/live/2020471/Live_1/index_1.m3u8
 
 ```
+
+showcues
+
+[ Help ]
+ 
+    To display this help:
+    
+	showcues help 
+	
+
+[ Input ]
+
+	showcues takes an m3u8 URI as input.
+
+    	M3U8 formats supported:
+
+        	* master  ( When a master.m3u8 used,
+                           showcues parses the first rendition it finds )
+        	* rendition 
+
+    	Segment types supported:
+
+        	* AAC
+        	* AC3
+        	* MPEGTS
+            	*codecs:
+                	* video
+                    		* mpeg2, h.264, h.265
+                	* audio
+                    		* mpeg2, aac, ac3, mp3 
+
+    	Protocols supported:
+
+        	* file
+		* http(s)
+		* UDP 
+		* Multicast
+
+    	Encryption supported:
+		
+		* AES-128 (segments are automatically decrypted) 	
+
+[ SCTE-35 ]
+
+    showcues displays SCTE-35 Embedded Cues as well as SCTE-35 HLS Tags.
+
+    Supported SCTE-35:
+
+        * All Commands, Descriptors, and UPIDS
+          in the 2022-b SCTE-35 specification.
+
+    Supported HLS Tags.
+    
+        * #EXT-OATCLS-SCTE35
+        * #EXT-X-CUE-OUT-CONT
+	* #EXT-X-DATERANGE
+	* #EXT-X-SCTE35
+	* #EXT-X-CUE-IN
+	* #EXT-X-CUE-OUT
+
+
+[ SCTE-35 Parsing Profiles ]
+
+	SCTE-35 parsing can be fine tuned by setting a parsing profile.
+
+    	running the command:
+
+        	showcues profile
+
+    	will generate a default profile and write a file named sc.profile
+    	in the current working directory.
+
+        a@fu:~$ cat sc.profile
+
+	expand_cues = False
+	parse_segments = False
+	parse_manifests = True
+	hls_tags = #EXT-OATCLS-SCTE35,#EXT-X-CUE-OUT-CONT,
+	#EXT-X-DATERANGE,#EXT-X-SCTE35,#EXT-X-CUE-IN,#EXT-X-CUE-OUT
+	command_types = 0x6,0x5
+	descriptor_tags = 0x2
+	starts = 0x22,0x30,0x32,0x34,0x36,0x44,0x46
+
+	( Integers are show in hex (base 16),
+	  base 10 unsigned integers can also be used in sc.profile )
+
+      	expand_cues:	   set to True to show cues fully expanded as JSON
+
+      	parse_segments:    set to true to enable parsing SCTE-35 from MPEGTS.
+
+      	parse_manifests:   set to true to parse the m3u8 file for SCTE-35 HLS Tags.
+  
+      	hls_tags:          set which SCTE-35 HLS Tags to parse.
+
+      	command_types:     set which Splice Commands to parse.
+
+      	descriptor_tags:   set which Splice Descriptor Tags to parse.
+
+      	starts:            set which Segmentation Type IDs to use to start breaks.
+
+
+
+    		Edit the file as needed and then run showcues.
+
+
+[ Profile Formatting Rules ]
+
+	* Values do not need to be quoted.
+
+	* Multiple values are separated by a commas.
+
+	* No partial line comments. Comments must be on a separate lines.
+
+	* Comments can be started with a # or //
+
+	* Integers can be base 10 or base 16
+
+
+[ Output Files ]
+
+	* Created in the current working directory
+	* Clobbered on start of showc ues
+
+	* Profile rules applied to the output:
+   	      *	sc.m3u8  - live playable rewrite of the m3u8
+    	      * sc.sidecar - list of ( pts, HLS SCTE-35 tag ) pairs
+
+	* Profile rules not applied to the output:	
+    	      * sc.dump  -  all of the HLS SCTE-35 tags read.
+	      * sc.flat  - every time an m3u8 is reloaded,
+                           it's contents are appended to sc.flat. 
+
+[ Cool Features ]
+
+    * showcues can resume when started in the middle of an ad break.
+
+            2023-10-13T05:59:50.24Z Resuming Ad Break
+            2023-10-13T05:59:50.34Z Setting Break Timer to 17.733
+            2023-10-13T05:59:50.44Z Setting Break Duration to 60.067
+
+    * mpegts streams are listed on start ( like ffprobe )
+
+            Program: 1
+                Service:	
+                Provider:	
+                Pid:	480
+                Pcr Pid:	481
+                Streams:
+                    Pid: 481[0x1e1]	Type: 0x1b AVC Video
+                    Pid: 482[0x1e2]	Type: 0xf AAC Audio
+                    Pid: 483[0x1e3]	Type: 0x86 SCTE35 Data
+                    Pid: 484[0x1e4]	Type: 252 Unknown
+                    Pid: 485[0x1e5]	Type: 0x15 ID3 Timed Meta Data
+
+
+[ Example Usage ]
+
+	* Show this help:		
+
+		showcues help
+
+	* Generate a new sc.profile
+	    
+		showcues profile
+
+	* parse an m3u8
+
+    		showcues  https://example.com/out/v1/547e1b8d09444666ac810f6f8c78ca82/index.m3u8
+           
 ### CUE-OUT
 * A `CUE-OUT` is shown with:
    * Wall Clock Time
