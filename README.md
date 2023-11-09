@@ -78,7 +78,6 @@ pypy3 -mpip install  --upgrade showcues
 ```rebol
 
 showcues https://nmxlive.akamaized.net/hls/live/529965/Live_1/index.m3u8
-
 ```
 
 showcues
