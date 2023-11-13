@@ -14,8 +14,8 @@
 
 ```lua
 2023-09-10T01:56:07.06Z Started
-			Manifest: ../a_b_c/index.m3u8
-			Window Size: 65
+			Manifest: https://example.com/index.m3u8
+			Window Size: 5
 			Target Duration: 3
 
 2023-09-10T01:56:07.06Z Resuming Ad Break
@@ -32,25 +32,29 @@ Program: 1
 		Pid: 482[0x1e2]	Type: 0xf AAC Audio
 		Pid: 483[0x1e3]	Type: 0x86 SCTE35 Data
 		Pid: 484[0x1e4]	Type: 0x15 ID3 Timed Meta Data
+```
+```rebol
+      
+2023-11-13T01:17:39.83Z #EXT-X-CUE-OUT:60.0
+			PTS: 49321.142044 (Splice Point)
+			Duration: 60.0
+			Media: index_2_3332800.ts
 
-2023-09-10T01:56:07.23Z IN 
-			PTS: 72945.8732
-			Tag: #EXT-X-CUE-IN
-			Diff: 0.064734
-			Media: seg140.ts
-
-2023-09-10T01:56:07.24Z SCTE-35
-			PTS: 72949.8772
-			Command: Splice Insert IN
-			Media: seg141.ts
-
-2023-09-10T01:56:07.24Z Invalid
-			PTS: 72953.8812
-			Tag: #EXT-X-CUE-IN
-			Media: seg144.ts
-
-2023-09-10T01:56:07.24Z PTS 72959.8872 
-                                                                     
+                                                                                                                                                         
+2023-11-13T01:17:39.83Z SCTE-35
+			Stream PTS: 49321.142044
+			PreRoll: 9.400011
+			Splice Point: 49330.542055
+			Type: Splice Insert
+			Media: index_2_3332800.ts
+                                                                                                                                                 
+2023-11-13T01:18:21.92Z AUTO CUE-IN
+			PTS: 49379.175378
+			Timer: 60.0
+			Duration: 60.0
+			Diff: 0.0
+			Media: index_2_3332812.ts
+             
 ```
 
 ## Install 
@@ -80,42 +84,33 @@ pypy3 -mpip install  --upgrade showcues
 showcues https://nmxlive.akamaized.net/hls/live/529965/Live_1/index.m3u8
 ```
 
-showcues
-
 [ Help ]
  
-    To display this help:
+    To display help:
     
 	showcues help 
 	
 
 [ Input ]
 
-	showcues takes an m3u8 URI as input.
+**showcues** takes an m3u8 URI as input.
 
-    	M3U8 formats supported:
+* M3U8 formats supported:
 
-        	* master  ( When a master.m3u8 used,
-                           showcues parses the first rendition it finds )
-        	* rendition 
+    * master  ( When a master.m3u8 used, showcues parses the first rendition it finds )
+  * rendition 
+        	
+* Segment types supported:
 
-    	Segment types supported:
+    * AAC
+    * AC3
+    * MPEGTS
 
-        	* AAC
-        	* AC3
-        	* MPEGTS
-            	*codecs:
-                	* video
-                    		* mpeg2, h.264, h.265
-                	* audio
-                    		* mpeg2, aac, ac3, mp3 
-
-    	Protocols supported:
-
-        	* file
-		* http(s)
-		* UDP 
-		* Multicast
+* Protocols supported:
+    * file
+    * http(s)
+	* UDP 
+	* Multicast
 
     	Encryption supported:
 		
@@ -123,35 +118,35 @@ showcues
 
 [ SCTE-35 ]
 
-    showcues displays SCTE-35 Embedded Cues as well as SCTE-35 HLS Tags.
+showcues displays SCTE-35 Embedded Cues as well as SCTE-35 HLS Tags.
 
-    Supported SCTE-35:
+ Supported SCTE-35:
 
-        * All Commands, Descriptors, and UPIDS
+* All Commands, Descriptors, and UPIDS
           in the 2022-b SCTE-35 specification.
 
-    Supported HLS Tags.
-    
-        * #EXT-OATCLS-SCTE35
-        * #EXT-X-CUE-OUT-CONT
-	* #EXT-X-DATERANGE
+* Supported HLS Tags
+    * #EXT-OATCLS-SCTE35
+    * #EXT-X-CUE-OUT-CONT
+    * #EXT-X-DATERANGE
 	* #EXT-X-SCTE35
 	* #EXT-X-CUE-IN
-	* #EXT-X-CUE-OUT
+    * #EXT-X-CUE-OUT
 
 
-[ SCTE-35 Parsing Profiles ]
+[ SCTE-35 Parsing Profiles]
 
-	SCTE-35 parsing can be fine tuned by setting a parsing profile.
+Parsing profiles allows you to adjust how showcues parses SCTE-35.
 
-    	running the command:
 
-        	showcues profile
+running the command:
 
-    	will generate a default profile and write a file named sc.profile
-    	in the current working directory.
+	`showcues profile`
 
-        a@fu:~$ cat sc.profile
+will generate a default profile and write a file named sc.profile
+in the current working directory.
+```rebol
+a@fu:~$ cat sc.profile
 
 	expand_cues = False
 	parse_segments = False
@@ -161,23 +156,27 @@ showcues
 	command_types = 0x6,0x5
 	descriptor_tags = 0x2
 	starts = 0x22,0x30,0x32,0x34,0x36,0x44,0x46
+```
+<br/>`expand_cues`:	   set to True to show cues fully expanded as JSON
+<br/>
 
-	( Integers are show in hex (base 16),
-	  base 10 unsigned integers can also be used in sc.profile )
+`parse_segments`:    set to true to enable parsing SCTE-35 from MPEGTS.
+<br/>
 
-      	expand_cues:	   set to True to show cues fully expanded as JSON
-
-      	parse_segments:    set to true to enable parsing SCTE-35 from MPEGTS.
-
-      	parse_manifests:   set to true to parse the m3u8 file for SCTE-35 HLS Tags.
+`parse_manifests`:   set to true to parse the m3u8 file for SCTE-35 HLS Tags.
+<br/>
   
-      	hls_tags:          set which SCTE-35 HLS Tags to parse.
+`hls_tags`:          set which SCTE-35 HLS Tags to parse.
+<br/>
 
-      	command_types:     set which Splice Commands to parse.
+`command_types`:     set which Splice Commands to parse.
+<br/>
 
-      	descriptor_tags:   set which Splice Descriptor Tags to parse.
+`descriptor_tags`:   set which Splice Descriptor Tags to parse.
+<br/>
 
-      	starts:            set which Segmentation Type IDs to use to start breaks.
+`starts`:            set which Segmentation Type IDs to use to start breaks.
+<br/>
 
 
 
@@ -186,40 +185,40 @@ showcues
 
 [ Profile Formatting Rules ]
 
-	* Values do not need to be quoted.
+* Values do not need to be quoted.
 
-	* Multiple values are separated by a commas.
+* Multiple values are separated by a commas.
 
-	* No partial line comments. Comments must be on a separate lines.
+* No partial line comments. Comments must be on a separate lines.
 
-	* Comments can be started with a # or //
+* Comments can be started with a # or //
 
-	* Integers can be base 10 or base 16
+* Integers can be base 10 or base 16
 
 
 [ Output Files ]
 
-	* Created in the current working directory
-	* Clobbered on start of showc ues
+* Created in the current working directory
+* Clobbered on start of showc ues
 
-	* Profile rules applied to the output:
-   	      *	sc.m3u8  - live playable rewrite of the m3u8
-    	      * sc.sidecar - list of ( pts, HLS SCTE-35 tag ) pairs
+* Profile rules applied to the output:
+   *	sc.m3u8  - live playable rewrite of the m3u8
+   * sc.sidecar - list of ( pts, HLS SCTE-35 tag ) pairs
 
-	* Profile rules not applied to the output:	
+* Profile rules not applied to the output:	
     	      * sc.dump  -  all of the HLS SCTE-35 tags read.
 	      * sc.flat  - every time an m3u8 is reloaded,
                            it's contents are appended to sc.flat. 
 
 [ Cool Features ]
 
-    * showcues can resume when started in the middle of an ad break.
+* showcues can resume when started in the middle of an ad break.
 
             2023-10-13T05:59:50.24Z Resuming Ad Break
             2023-10-13T05:59:50.34Z Setting Break Timer to 17.733
             2023-10-13T05:59:50.44Z Setting Break Duration to 60.067
 
-    * mpegts streams are listed on start ( like ffprobe )
+* mpegts streams are listed on start ( like ffprobe )
 
             Program: 1
                 Service:	
@@ -236,15 +235,15 @@ showcues
 
 [ Example Usage ]
 
-	* Show this help:		
+* Show this help:		
 
 		showcues help
 
-	* Generate a new sc.profile
+* Generate a new sc.profile
 	    
 		showcues profile
 
-	* parse an m3u8
+* parse an m3u8
 
     		showcues  https://example.com/out/v1/547e1b8d09444666ac810f6f8c78ca82/index.m3u8
            
