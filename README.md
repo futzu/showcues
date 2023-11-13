@@ -11,28 +11,6 @@
  [showcues cyclomatic complexity score: __A (2.81)__](cc.md)
  
 
-
-```lua
-2023-09-10T01:56:07.06Z Started
-			Manifest: https://example.com/index.m3u8
-			Window Size: 5
-			Target Duration: 3
-
-2023-09-10T01:56:07.06Z Resuming Ad Break
-2023-09-10T01:56:07.06Z Setting Break Timer to 2.0
-2023-09-10T01:56:07.06Z Setting Break Duration to 119.986533
-
-Program: 1
-    Service:	
-    Provider:	
-    Pid:	480
-    Pcr Pid:	481
-    Streams:
-		Pid: 481[0x1e1]	Type: 0x1b AVC Video
-		Pid: 482[0x1e2]	Type: 0xf AAC Audio
-		Pid: 483[0x1e3]	Type: 0x86 SCTE35 Data
-		Pid: 484[0x1e4]	Type: 0x15 ID3 Timed Meta Data
-```
 ```rebol
       
 2023-11-13T01:17:39.83Z #EXT-X-CUE-OUT:60.0
