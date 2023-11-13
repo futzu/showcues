@@ -1,32 +1,24 @@
 # showcues is a tool for debugging SCTE-35 in HLS.
  
-
-* showcues parses SCTE-35 HLS Tags
-```rebol
-      
-2023-11-13T01:17:39.83Z #EXT-X-CUE-OUT:60.0
-			PTS: 49321.142044 (Splice Point)
-			Duration: 60.0
-			Media: index_3_3332800.ts
-```
-* showcues parses embedded SCTE-35 from MPEGTS segments.
 ```rebol                                                                                                                                                  
 2023-11-13T01:17:39.83Z SCTE-35
 			Stream PTS: 49321.142044
 			PreRoll: 9.400011
 			Splice Point: 49330.542055
 			Type: Splice Insert
-			Media: index_2_3332800.ts
-     
+			Media: index_2_3332800.ts   
 ```
+* Parses live streams and VOD media.
+* shows HLS SCTE-35 tags with wall clock times.
+* shows embedded SCTE-35 Cues from SCTE-35 streams in MPEGTS segments.
+* shows __invalid__ SCTE=35 HLS Tags.
+* shows Break duration and diff with __real time__ counters.
+* __Automatic AES Decryption__ for MPEGTS segments.
+* Parses PTS from MPEGTS as well as AAC and AC3 __ID3 headers__.
+* Writes a corrected m3u8. (_sc.m3u8_)
+* Writes a m3u8 that flattens out a live stream to VOD. (_flat.m3u8_)
+* Writes a sidecar file for all SCTE-35 found (_sc.sidecar_)
 
-* Display HLS CUE-OUT and CUE-IN tags with wall clock times.
-* Displays SCTE-35 Cues from SCTE-35 streams in MPEGTS segments.
-* Displays invalid SCTE=35 HLS Tags.
-* Displays Break duration and diff.
-* Automatic AES Decryption for MPEGTS segments.
-* Parses PTS from MPEGTS as well as AAC and AC3 ID3 headers.
- 
 #  Latest Version is `1.0.41`
  [showcues cyclomatic complexity score: __A (2.81)__](cc.md)
 
