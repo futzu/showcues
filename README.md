@@ -20,7 +20,6 @@
 * Writes a sidecar file for all SCTE-35 found (_sc.sidecar_)
 
 #  Latest Version is `1.0.41`
- [showcues cyclomatic complexity score: __A (2.81)__](cc.md)
 
 ## Install 
 * Use pip to install
