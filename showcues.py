@@ -12,6 +12,8 @@ from new_reader import reader
 
 REV = "\033[7m"
 NORM = "\033[27m"
+REV = ''
+NORM = ''
 SUB = "\t\t\t"
 NSUB = f"\n{SUB}"
 ROLLOVER = 95443.717678
@@ -56,8 +58,8 @@ class Scte35Profile:
         """
         A Scte35Profile
         """
-        self.expand_cues = False  # Show SCTE-35 Cues fully expanded.
-        self.parse_segments = False  # Parse Segments for SCTE-35.
+        self.expand_cues = True  # Show SCTE-35 Cues fully expanded.
+        self.parse_segments = True  # Parse Segments for SCTE-35.
         self.parse_manifests = True  # Parse m3u8 files for SCTE-35 HLS tags.
         self.hls_tags = [
             "#EXT-OATCLS-SCTE35",
@@ -192,7 +194,7 @@ class Scte35Profile:
                         duration = dscptr.segmentation_duration
                         line = f"#EXT-X-CUE-OUT:{duration}\n"
                         return line
-                    
+
                 if dscptr.segmentation_type_id == self.seg_type:
                     line = "#EXT-X-CUE-IN\n"
                     self.seg_type = None
@@ -370,7 +372,7 @@ class CuePuller:
         to_sidecar writes (pts,hls tag) pairs to the sidecar file.
         """
         with open(self.sidecar, "a") as sidecar:
-            sidecar.write(f"{pts},{line}\n")
+            sidecar.write(f"{round(pts,6)},{line}\n")
 
     def to_dump(self, pts, line):
         """
@@ -480,18 +482,19 @@ class CuePuller:
         _set_break_timer sets self.break_timer to ElaspsedTime
         read from a CUE-OUT-CONT tag or to 0.0.
         """
-        if self.break_timer is None:
-            if "ElapsedTime" in cont_tags:
-                self.break_timer = cont_tags["ElapsedTime"]
-            else:
-                try:
-                    self.break_timer = round(
-                        float(line.split(":", 1)[1].split("/")[0]), 3
-                    )
-                except:
-                    self.break_timer = 0.0
-            print(f"{iso8601()}{REV}Setting{NORM} Break Timer to {self.break_timer}\n")
-            time.sleep(0.1)
+        if self.break_timer:
+            return
+        if "ElapsedTime" in cont_tags:
+            self.break_timer = cont_tags["ElapsedTime"]
+        else:
+            try:
+                self.break_timer = round(
+                    float(line.split(":", 1)[1].split("/")[0]), 3
+                )
+            except:
+                self.break_timer = 0.0
+        print(f"{iso8601()}{REV}Setting{NORM} Break Timer to {self.break_timer}\n")
+        time.sleep(0.1)
 
     def _set_break_duration(self, line, cont_tags):
         """
@@ -678,6 +681,48 @@ class CuePuller:
             flush=True,
         )
 
+    def ts_pts(self,seg):
+        """
+        ts_pts set pts from segment
+        """
+        if seg.pts_start:
+            self.pts = seg.pts_start
+            self.print_time()
+            self.hls_pts = "PTS"
+
+    def ts_cues(self,seg):
+        """
+        ts_cues process SCTE-35 cues
+        found in a segment.
+        """
+        for cue in seg.cues:
+            if "pts" in vars(cue.packet_data) and cue.packet_data.pts:
+                self.pts = cue.packet_data.pts
+            if cue.encode() != self.last_cue:
+                self.last_cue = cue.encode()
+                self.ts_set_cue(cue)
+
+    def ts_set_cue(self,cue):
+        """
+        ts_set_cue validate and set cue from ts segment.
+        """
+        cue_pts, line = self.prof.validate_cue(cue)
+        if cue_pts and line:
+            self.set_cue_state(cue.encode(), line)
+            self.clear()
+            print(
+                (NSUB).join(
+                    [
+                        f"\n{iso8601()}{REV}SCTE-35{NORM}",
+                        f"Stream PTS: {round(self.pts,6)}",
+                        f"PreRoll: {round(cue_pts - self.pts,6)}",
+                        f"Splice Point: {round(cue_pts,6)}",
+                        f"Type: {cue.command.name}",
+                        f"{self.media_stuff()}\n",
+                    ]
+                )
+            )
+
     def chk_ts(self, this):
         """
         chk_ts  check MPEGTS for PTS and SCTE-35.
@@ -688,33 +733,9 @@ class CuePuller:
             seg = Segment(this, key_uri=self.key_uri, iv=self.iv)
             seg.shushed()
             seg.decode()
-            if seg.pts_start:
-                self.pts = seg.pts_start
-                self.print_time()
-                self.hls_pts = "PTS"
+            self.ts_pts(seg)
             if self.prof.parse_segments:
-                for cue in seg.cues:
-                    if "pts" in vars(cue.packet_data) and cue.packet_data.pts:
-                        self.pts = cue.packet_data.pts
-                    if cue.encode() != self.last_cue:
-                        self.last_cue = cue.encode()
-                        cue_pts, line = self.prof.validate_cue(cue)
-                        if cue_pts and line:
-                            self.set_cue_state(cue.encode(), line)
-                            self.clear()
-                            print(
-                                (NSUB).join(
-                                    [
-                                        f"\n{iso8601()}{REV}SCTE-35{NORM}",
-                                        f"Stream PTS: {round(self.pts,6)}",
-                                        f"PreRoll: {round(cue_pts - self.pts,6)}",
-                                        f"Splice Point: {round(cue_pts,6)}",
-                                        f"Type: {cue.command.name}",
-                                        f"{self.media_stuff()}\n",
-                                    ]
-                                )
-                            )
-
+                self.ts_cues(seg)
             self.print_time()
 
     def chk_aac(self, this):
@@ -818,20 +839,51 @@ class CuePuller:
             self.reload = False
 
     def write_flat(self,lines,media):
+        """
+        write_flat flatten out the sliding window
+        and write all data to flat.m3u8.
+        """
         with open (self.flat,'a') as flat:
             if self.first_segment:
-                flat.write("#EXTM3U\n")    
+                flat.write("#EXTM3U\n")
                 for header in self.headers:
                     flat.write(header)
             for line in lines:
                 flat.write(line)
-            flat.write(media)        
-            
+            flat.write(media)
+
     def write_manifest(self):
+        """
+        write_manifest write data to sc.m3u8
+        with profile rules applied.
+        """
         with open(self.m3u8, "w") as out:
             out.write("#EXTM3U\n")
             out.write("".join(self.headers))
             out.write(self.sliding_window.all_panes())
+
+    def _parse_new_media(self,lines,media):
+        self.write_flat(lines,media)
+        parsed = [self.parse_line(line) for line in lines]
+        lines = [line for line in parsed if line is not None]
+        media = media.replace("\n", "")
+        self.chk_ts(media)
+        self.chk_aac(media)
+        pane = Pane(media, lines)
+        self.sliding_window.slide_panes(pane)
+        self.first_segment = False
+
+    def _fixup_media(self,lines,media):
+        if not media.startswith("http"):
+            media = self.base_uri + "/" + media
+        if self.new_media(media):
+            self._parse_new_media(lines,media)
+
+    def _post_parse(self):
+        self.write_manifest()
+        self.headers = []
+        self.update_cue_state()
+        time.sleep(self.sleep_duration)
 
     def _parse_manifest(self, manifest):
         """
@@ -848,23 +900,10 @@ class CuePuller:
                         lines.append(line)
                 else:
                     media = line
-                    if not media.startswith("http"):
-                        media = self.base_uri + "/" + media
-                    if self.new_media(media):
-                        self.write_flat(lines,media)
-                        parsed = [self.parse_line(line) for line in lines]
-                        lines = [line for line in parsed if line is not None]
-                        media = media.replace("\n", "")
-                        self.chk_ts(media)
-                        self.chk_aac(media)
-                        pane = Pane(media, lines)
-                        self.sliding_window.slide_panes(pane)
-                        self.first_segment = False
+                    self._fixup_media(lines,media)
                     lines = []
-            self.write_manifest()
-            self.headers = []
-            self.update_cue_state()
-            time.sleep(self.sleep_duration)
+            self._post_parse()
+
 
     def pull(self, manifest):
         """
@@ -930,11 +969,11 @@ helpme = """
 showcues
 
 [ Help ]
- 
+
     To display this help:
-    
-	showcues help 
-	
+
+	showcues help
+
 
 [ Input ]
 
@@ -944,7 +983,7 @@ showcues
 
         	* master  ( When a master.m3u8 used,
                            showcues parses the first rendition it finds )
-        	* rendition 
+        	* rendition
 
     	Segment types supported:
 
@@ -955,18 +994,18 @@ showcues
                 	* video
                     		* mpeg2, h.264, h.265
                 	* audio
-                    		* mpeg2, aac, ac3, mp3 
+                    		* mpeg2, aac, ac3, mp3
 
     	Protocols supported:
 
         	* file
 		* http(s)
-		* UDP 
+		* UDP
 		* Multicast
 
     	Encryption supported:
-		
-		* AES-128 (segments are automatically decrypted) 	
+
+		* AES-128 (segments are automatically decrypted)
 
 [ SCTE-35 ]
 
@@ -978,7 +1017,7 @@ showcues
           in the 2022-b SCTE-35 specification.
 
     Supported HLS Tags.
-    
+
         * #EXT-OATCLS-SCTE35
         * #EXT-X-CUE-OUT-CONT
 	* #EXT-X-DATERANGE
@@ -1017,7 +1056,7 @@ showcues
       	parse_segments:    set to true to enable parsing SCTE-35 from MPEGTS.
 
       	parse_manifests:   set to true to parse the m3u8 file for SCTE-35 HLS Tags.
-  
+
       	hls_tags:          set which SCTE-35 HLS Tags to parse.
 
       	command_types:     set which Splice Commands to parse.
@@ -1053,10 +1092,10 @@ showcues
    	      *	sc.m3u8  - live playable rewrite of the m3u8
     	      * sc.sidecar - list of ( pts, HLS SCTE-35 tag ) pairs
 
-	* Profile rules not applied to the output:	
+	* Profile rules not applied to the output:
     	      * sc.dump  -  all of the HLS SCTE-35 tags read.
 	      * sc.flat  - every time an m3u8 is reloaded,
-                           it's contents are appended to sc.flat. 
+                           it's contents are appended to sc.flat.
 
 [ Cool Features ]
 
@@ -1069,8 +1108,8 @@ showcues
     * mpegts streams are listed on start ( like ffprobe )
 
             Program: 1
-                Service:	
-                Provider:	
+                Service:
+                Provider:
                 Pid:	480
                 Pcr Pid:	481
                 Streams:
@@ -1083,18 +1122,18 @@ showcues
 
 [ Example Usage ]
 
-	* Show this help:		
+	* Show this help:
 
 		showcues help
 
 	* Generate a new sc.profile
-	    
+
 		showcues profile
 
 	* parse an m3u8
 
     		showcues  https://example.com/out/v1/547e1b8d09444666ac810f6f8c78ca82/index.m3u8
-           
+
 """
 
 
