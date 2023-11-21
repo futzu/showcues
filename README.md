@@ -1,5 +1,6 @@
-# showcues is a tool for debugging SCTE-35 in HLS.
- 
+# showcues 
+###  A Super Cool HLS SCTE-35 Debugging Tool. 
+#### showcues development was financed by the fine folks at  [ tunein.com ](https://tunein.com).
 ```rebol                                                                                                                                                  
 2023-11-13T01:17:39.83Z SCTE-35
 			Stream PTS: 49321.142044
@@ -8,18 +9,18 @@
 			Type: Splice Insert
 			Media: index_2_3332800.ts   
 ```
-* Parses live streams and VOD media.
-* shows HLS SCTE-35 tags with wall clock times.
-* shows embedded SCTE-35 Cues from SCTE-35 streams in MPEGTS segments.
-* shows __invalid__ SCTE=35 HLS Tags.
-* shows Break duration and diff with __real time__ counters.
-* __Automatic AES Decryption__ for MPEGTS segments.
-* Parses PTS from MPEGTS as well as AAC and AC3 __ID3 headers__.
-* Writes a corrected m3u8. (_sc.m3u8_)
-* Writes a m3u8 that flattens out a live stream to VOD. (_flat.m3u8_)
-* Writes a sidecar file for all SCTE-35 found (_sc.sidecar_)
 
 #  Latest Version is `1.0.41`
+
+
+  **Debugging SCTE-35 Cues in live HLS streams can be a traumatic experience**.<br> 
+  SCTE-35 Cues can be embedded in the stream or inserted with HLS tags into the manifest. <br>
+  **To make it a little more complicated**, <br>
+  there are at least four different SCTE-35 HLS tags options currently in use. <br>
+  **showcues** is designed to parse all SCTE-35 data currently used in HLS. 
+
+ [ Supported ](#Supported)
+
 
 ## Install 
 * Use pip to install
@@ -54,50 +55,6 @@ showcues https://nmxlive.akamaized.net/hls/live/529965/Live_1/index.m3u8
     
 	showcues help 
 	
-
-[ Input ]
-
-**showcues** takes an m3u8 URI as input.
-
-* M3U8 formats supported:
-
-    * master  ( When a master.m3u8 used, showcues parses the first rendition it finds )
-  * rendition 
-        	
-* Segment types supported:
-
-    * AAC
-    * AC3
-    * MPEGTS
-
-* Protocols supported:
-    * file
-    * http(s)
-	* UDP 
-	* Multicast
-
-    	Encryption supported:
-		
-		* AES-128 (segments are automatically decrypted) 	
-
-[ SCTE-35 ]
-
-showcues displays SCTE-35 Embedded Cues as well as SCTE-35 HLS Tags.
-
- Supported SCTE-35:
-
-* All Commands, Descriptors, and UPIDS
-          in the 2022-b SCTE-35 specification.
-
-* Supported HLS Tags
-    * #EXT-OATCLS-SCTE35
-    * #EXT-X-CUE-OUT-CONT
-    * #EXT-X-DATERANGE
-	* #EXT-X-SCTE35
-	* #EXT-X-CUE-IN
-    * #EXT-X-CUE-OUT
-
-
 [ SCTE-35 Parsing Profiles]
 
 Parsing profiles allows you to adjust how showcues parses SCTE-35.
@@ -293,3 +250,43 @@ a@debian:~/tunein/showcues$ tail -f sidecar.txt
 59305.014622,/DBFAAH/7S+YAP/wFAUAAAABf+//PiMLNP4ApMbEmZkBAQAgAh5DVUVJAAAAAH/AAACky4ABCDEwMTAwMDAwNAAAAAClR6us
 59595.771756,/DBFAAH/7S+YAP/wFAUAAAABf+//P7JWgv4Azey6mZkBAQAgAh5DVUVJAAAAAH/AAADN/mABCDEwMTAwMDAwNAAAAAC+xYYV
 ```
+
+# Supported
+
+
+*  **M3U8 formats** 
+	*    master ( When a master.m3u8 used, showcues parses the first rendition it finds )
+ 	*  rendition
+
+* **Segment types**
+
+	* AAC
+	* AC3
+	*  MPEGTS
+* **Protocols**
+	*  File
+	* Http(s)
+	* UDP
+	* Multicast
+  
+* **Encryption**
+	* **AES-128** (segments are automatically decrypted)
+
+* **SCTE-35**
+
+	*  All 2022-b Splice Commands
+	*  All 2022-b Splice Descriptors
+	*  All 2022-b UPIDS
+
+* **SCTE-35 HLS tags**
+	* #EXT-X-CUE-OUT
+	* #EXT-CUE-OUT-CONT
+	* #EXT-X-CUE-IN
+	* #EXT-X-DATERANGE
+	*  #EXT-X-OATCLS
+	*  #EXT-X-SCTE35
+	*  #EXT-X-SPLICEPOINT-SCTE35
+	*  #EXT-X-SCTE35
+
+
+
