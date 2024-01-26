@@ -11,8 +11,8 @@ from new_reader import reader
 
 REV = "\033[7m"
 NORM = "\033[27m"
-REV = ""
-NORM = ""
+# REV = ""
+# NORM = ""
 SUB = "\t\t\t"
 NSUB = f"\n{SUB}"
 ROLLOVER = 95443.717678
@@ -278,6 +278,7 @@ class AacParser:
     """
     AacParser parses aac segments.
     """
+
     applehead = b"com.apple.streaming.transportStreamTimestamp"
 
     @staticmethod
@@ -332,6 +333,7 @@ class CuePuller:
     """
     CuePuller is the main object.
     """
+
     def __init__(self):
         self.media = deque()
         self.sidecar = "sc.sidecar"
@@ -984,12 +986,12 @@ def cli():
             ]
     if playlists:
         m3u8 = playlists[0].media
-        m3u8 = "http" + m3u8.split("http")[-1]
     else:
         m3u8 = sys.argv[1]
     cp = CuePuller()
     cp.pull(m3u8)
     print()
+    sys.exit()
 
 
 helpme = """
