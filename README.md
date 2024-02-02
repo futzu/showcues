@@ -1,7 +1,8 @@
 # showcues 
-###  A Super Cool HLS SCTE-35 Debugging Tool. 
-#### showcues development was financed by the fine folks at  [ tunein.com ](https://tunein.com).
-```rebol                                                                                                                                                  
+###  A Super Cool HLS SCTE-35 Debugging Tool powered by [threefive](https://github.com/futzu/threefive)
+
+#### showcues development was financed by the fine folks at  [ tunein.com ](https://tunein.com)
+```js                                                                                                                                             
 2023-11-13T01:17:39.83Z SCTE-35
 			Stream PTS: 49321.142044
 			PreRoll: 9.400011
