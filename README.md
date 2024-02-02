@@ -41,7 +41,7 @@ pypy3 -mpip install  --upgrade showcues
 * showcues takes a master m3u8 OR variant m3u8 _(new with v.1.0.5)_ as input.
 * showcues displays where the SCTE-35 cues are based on the SCTE-35 data.
 * showcues follows the rules we will be applying to SCTE-35 in HLS. 
-   *  Incorrect HLS Tags ate reported as invalid. 
+   *  Incorrect HLS tags are reported as invalid. 
    * Missing CUE-INs from break auto-returns are automatically added.
    
 ```rebol
