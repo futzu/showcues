@@ -11,7 +11,7 @@
 			Media: index_2_3332800.ts   
 ```
 
-#  Latest Version is `1.0.41`
+#  Latest Version is `1.0.43`
 
 
   **Debugging SCTE-35 Cues in live HLS streams can be a traumatic experience**.<br> 
