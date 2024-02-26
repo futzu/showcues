@@ -83,31 +83,31 @@ class Scte35Profile:
         """
         write_profile writes sc.profile for editing.
         """
-        with open(pro_file, "w") as pro_file:
-            for k, v in vars(self).items():
-                line = f"{k} = "
-                if isinstance(v, list):
-                    for item in v:
+        with open(pro_file, "w") as pro_f:
+            for que, vee in vars(self).items():
+                line = f"{que} = "
+                if isinstance(vee, list):
+                    for item in vee:
                         if isinstance(item, int):
                             line = f"{line}{hex(item)},"
                         else:
                             line = f"{line}{item},"
-                if isinstance(v, bool):
-                    line = f"{line}{v}"
+                if isinstance(vee, bool):
+                    line = f"{line}{vee}"
                 if line.endswith(","):
                     line = line[:-1]
-                pro_file.write(line + "\n")
+                pro_f.write(line + "\n")
 
     def show_profile(self, headline):
         """
         show_profile displays profile settings.
         """
         print(f"\n\n\t\t\t{REV}{headline}{NORM}\n")
-        for k, v in vars(self).items():
-            if isinstance(v, list):
-                if isinstance(v[0], int):
-                    v = [hex(i) for i in v]
-            print(f"\t\t\t{k} = {v}\n")
+        for que, vee in vars(self).items():
+            if isinstance(vee, list):
+                if isinstance(vee[0], int):
+                    vee = [hex(eye) for eye in vee]
+            print(f"\t\t\t{que} = {vee}\n")
             time.sleep(0.3)
 
     def clean_n_split(self, line):
@@ -116,8 +116,8 @@ class Scte35Profile:
         """
         this, that = None, None
         bad = [" ", "\n", "\t", '"', "'"]
-        for b in bad:
-            line = line.replace(b, "")
+        for bee in bad:
+            line = line.replace(bee, "")
         if line:
             this, that = line.split("=", 1)
             that = list(that.split(","))
@@ -305,28 +305,26 @@ class AacParser:
         """
         lsb = len(somebytes) - 1
         syncd = 0
-        for idx, b in enumerate(somebytes):
-            syncd += b << ((lsb - idx) << 3)
+        for idx, bite in enumerate(somebytes):
+            syncd += bite << ((lsb - idx) << 3)
         return round(syncd / 90000.0, 6)
 
     def parse(self, media):
         """
         aac_pts parses the ID3 header tags in aac and ac3 audio files
         """
+        pts = 0
         aac = reader(media)
         header = aac.read(10)
         if self.is_header(header):
             id3len = self.id3_len(header)
             data = aac.read(id3len)
-            pts = 0
             if self.applehead in data:
                 try:
                     pts = float(data.split(self.applehead)[1].split(b"\x00", 2)[1])
                 except:
                     pts = self.syncsafe5(data.split(self.applehead)[1][:9])
-                finally:
-                    self.first_segment = False
-                    return round((pts % ROLLOVER), 6)
+        return round((pts % ROLLOVER), 6)
 
 
 class CuePuller:
@@ -378,8 +376,8 @@ class CuePuller:
         self.sidecar, self.dumpfile, self.flat, self.m3u8
         when showcues is started.
         """
-        for f in [self.sidecar, self.dumpfile, self.flat, self.m3u8]:
-            with open(f, "w+") as f:  # touch
+        for sidef in [self.sidecar, self.dumpfile, self.flat, self.m3u8]:
+            with open(sidef, "w+") as side_file:  # touch
                 pass
 
     def chk_aes(self, line):
@@ -468,9 +466,6 @@ class CuePuller:
         if "CONT" not in line:
             head = f"\n{iso8601()}{REV}{line}{NORM}{self.pts_stuff()} (Splice Point)"
             if line.startswith("#EXT-X-CUE-IN") and self.cue_state == "CONT":
-                ##                if self.break_duration and self.break_timer:
-                ##                    if self.break_timer < self.break_duration:
-                ##                        return self.invalid(line)
                 self.cue_state = "IN"
                 self.to_sidecar(self.pts, line)
                 self.clear()
@@ -505,8 +500,8 @@ class CuePuller:
 
     def show_tags(self, tags):
         try:
-            for k, v in tags.items():
-                print(f"{SUB}{k}: {v}")
+            for que, vee in tags.items():
+                print(f"{SUB}{que}: {vee}")
         except:
             return
 
@@ -635,12 +630,11 @@ class CuePuller:
             if key in line:
                 self.to_dump(self.pts, line)
         if self.prof.parse_manifests:
-            for k, v in scte35_map.items():
-                if k in line:
-                    if k not in self.prof.hls_tags:
+            for que, vee in scte35_map.items():
+                if que in line:
+                    if que not in self.prof.hls_tags:
                         return None
-                    else:
-                        return v(tags, line)
+                    return vee(tags, line)
         return line
 
     def auto_cont(self):
@@ -819,7 +813,6 @@ class CuePuller:
             self.window_size = len([line for line in lines if "#EXTINF:" in line])
             self.sliding_window.size = self.window_size
             print(f"{SUB}{REV}Window Size{NORM} {self.window_size}\n")
-            time.sleep(0.2)
 
     def update_cue_state(self):
         """
@@ -976,20 +969,20 @@ def cli():
     with reader(sys.argv[1]) as arg:
         variants = [line for line in arg if b"#EXT-X-STREAM-INF" in line]
         if variants:
-            fu = M3uFu()
-            fu.m3u8 = sys.argv[1]
-            fu.decode()
+            fumo = M3uFu()
+            fumo.m3u8 = sys.argv[1]
+            fumo.decode()
             playlists = [
                 segment
-                for segment in fu.segments
+                for segment in fumo.segments
                 if "#EXT-X-STREAM-INF" in segment.tags
             ]
     if playlists:
         m3u8 = playlists[0].media
     else:
         m3u8 = sys.argv[1]
-    cp = CuePuller()
-    cp.pull(m3u8)
+    cpulr = CuePuller()
+    cpulr.pull(m3u8)
     print()
     sys.exit()
 
