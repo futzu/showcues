@@ -13,7 +13,7 @@ setuptools.setup(
     version=version,
     author="Adrian of Doom.",
     author_email="spam@iodisco.com",
-    description="showcues displays HLS CUE-IN and CUE-OUT tags with wallclock time",
+    description="showcues is a HLS SCTE-35 debugger and manifest manipulator",
     long_description=readme,
     long_description_content_type="text/markdown",
     url="https://github.com/futzu/showcues",
