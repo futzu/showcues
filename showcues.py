@@ -58,7 +58,7 @@ class Scte35Profile:
         """
         A Scte35Profile
         """
-        self.expand_cues = True  # Show SCTE-35 Cues fully expanded.
+        self.expand_cues = False  # Show SCTE-35 Cues fully expanded.
         self.parse_segments = True  # Parse Segments for SCTE-35.
         self.parse_manifests = True  # Parse m3u8 files for SCTE-35 HLS tags.
         self.hls_tags = [
@@ -494,7 +494,7 @@ class CuePuller:
         """
         self.clear()
         print(
-            f"\n{iso8601()}{REV}Skipped{NORM}  {line}{self.pts_stuff()}{NSUB}{self.media_stuff()}\n"
+            f"\n{iso8601()}{REV} Skipped {NORM}  {line}{self.pts_stuff()}{NSUB}{self.media_stuff()}\n"
         )
         return "## " + line
 
@@ -519,7 +519,7 @@ class CuePuller:
                 self.break_timer = round(float(line.split(":", 1)[1].split("/")[0]), 3)
             except:
                 self.break_timer = 0.0
-        print(f"{iso8601()}{REV}Setting{NORM} Break Timer to {self.break_timer}\n")
+        print(f"{iso8601()}{REV} Break Timer {NORM}to {self.break_timer}\n")
         time.sleep(0.1)
 
     def _set_break_duration(self, line, cont_tags):
@@ -540,7 +540,7 @@ class CuePuller:
                 self.break_duration = None
         if self.break_duration:
             print(
-                f"{iso8601()}{REV}Setting{NORM} Break Duration to {self.break_duration}\n"
+                f"{iso8601()}{REV}Break Duration {NORM}to {self.break_duration}\n"
             )
             time.sleep(0.1)
 
@@ -553,7 +553,7 @@ class CuePuller:
         if self.cue_state not in ["OUT", "CONT"] and not self.first_segment:
             return None
         if self.first_segment:
-            print(f"{iso8601()}{REV}Resuming Ad Break{NORM}\n")
+            print(f"{iso8601()}{REV} Resuming Ad Break {NORM}\n")
             self.cue_state = "CONT"
             self._set_break_timer(line, cont_tags)
             self._set_break_duration(line, cont_tags)
@@ -655,7 +655,7 @@ class CuePuller:
                     self.cue_state = "IN"
                     self.clear()
                     print(
-                        f"{iso8601()}{REV}AUTO CUE-IN{NORM}{self.pts_stuff()}{self.diff_stuff()}{NSUB}{self.media_stuff()}\n"
+                        f"{iso8601()}{REV} AUTO CUE-IN {NORM}{self.pts_stuff()}{self.diff_stuff()}{NSUB}{self.media_stuff()}\n"
                     )
                     self.reset_break()
                     self.to_sidecar(self.pts, "#AUTO\n#EXT-X-CUE-IN\n")
@@ -696,11 +696,11 @@ class CuePuller:
         """
         stuff = ""
         if self.break_timer:
-            stuff = f"{REV}Break{NORM} {round(self.break_timer,3)}"
+            stuff = f"{REV} Break {NORM} {round(self.break_timer,3)}"
             if self.break_duration:
                 stuff = f"{stuff} / {round(self.break_duration,3)}"
         print(
-            f"\r\r{iso8601()}{REV}{self.hls_pts}{NORM} {self.pts} {stuff}",
+            f"\r\r{iso8601()}{REV} {self.hls_pts} {NORM} {self.pts} {stuff}",
             end="\r",
             file=sys.stderr,
             flush=True,
@@ -738,7 +738,7 @@ class CuePuller:
             print(
                 (NSUB).join(
                     [
-                        f"\n{iso8601()}{REV}SCTE-35{NORM}",
+                        f"\n{iso8601()}{REV} SCTE-35 {NORM}",
                         f"Stream PTS: {round(self.pts,6)}",
                         f"PreRoll: {round(cue_pts - self.pts,6)}",
                         f"Splice Point: {round(cue_pts,6)}",
@@ -800,7 +800,7 @@ class CuePuller:
             if self.sleep_duration == 0:
                 target_duration = atoif(line.split(":")[1])
                 self.sleep_duration = round(target_duration * 0.5, 3)
-                print(f"{SUB}{REV}Target Duration{NORM} {target_duration}\n")
+                print(f"{SUB}{REV} Target Duration {NORM} {target_duration}\n")
 
     def mk_window_size(self, lines):
         """
@@ -812,7 +812,7 @@ class CuePuller:
         if not self.window_size:
             self.window_size = len([line for line in lines if "#EXTINF:" in line])
             self.sliding_window.size = self.window_size
-            print(f"{SUB}{REV}Window Size{NORM} {self.window_size}\n")
+            print(f"{SUB}{REV} Window Size {NORM} {self.window_size}\n")
 
     def update_cue_state(self):
         """
@@ -932,8 +932,8 @@ class CuePuller:
         """
         pull m3u8 and parse it.
         """
-        print(f"\n{iso8601()}{REV}Started{NORM}\n")
-        print(f"{SUB}{REV}Manifest{NORM} {manifest}\n")
+        print(f"\n{iso8601()}{REV} Started {NORM}\n")
+        print(f"{SUB}{REV} Manifest {NORM} {manifest}\n")
         self.base_uri = manifest.rsplit("/", 1)[0]
         self.sliding_window = SlidingWindow()
         while self.reload:
