@@ -30,6 +30,15 @@ python3 -mpip install showcues
 # and / or 
 pypy3 -mpip install showcues
 ```
+## Heads up! upgrade threefive to  `2`.`4`.`55`
+```js
+python3 -mpip install --upgrade threefive
+```
+* and / or 
+```js
+pypy3 -mpip install --upgrade threefive
+```
+
 ## Upgrade
 * Use pip to upgrade
 ```rebol
