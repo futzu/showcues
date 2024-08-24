@@ -24,18 +24,21 @@ def atoif(value):
     """
     atoif converts ascii to (int|float)
     """
-    if "." in value:
-        try:
-            value = float(value)
-            return value
-        except:
-            pass
-    else:
-        try:
-            value = int(value)
-            return value
-        except:
-            pass
+    if isinstance(value,(int,float)):
+        return value
+    if isinstance(value,str):
+        if "." in value:
+            try:
+                value = float(value)
+                return value
+            except:
+                pass
+        else:
+            try:
+                value = int(value)
+                return value
+            except:
+                pass
     return None
 
 
